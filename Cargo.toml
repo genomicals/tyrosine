@@ -1,8 +1,10 @@
-[package]
-name = "tyrosine"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "base",
+    "neat-rs",
+    "neat-py",
+    "neat-go",
+]
+resolver = "1"
 
-[dependencies]
