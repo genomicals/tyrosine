@@ -2,8 +2,8 @@
 
 members = [
     "base",
-    "neat-rs",
-    "neat-py",
+    "tyrosine-rs",
+    "tyrosine-py",
 ]
 resolver = "1"
 
