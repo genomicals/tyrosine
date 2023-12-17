@@ -56,10 +56,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "neat-go"
-version = "0.1.0"
-
-[[package]]
 name = "neat-py"
 version = "0.1.0"
 dependencies = [

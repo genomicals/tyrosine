@@ -1,0 +1,9 @@
+For Go, maybe create simple functions and such, and create a Go file that will
+create structs and methods and interface with the simplified NEAT interface.
+This method may be necessary because I'm not sure if ABI supports structs. Even
+so Go support will be on the back-burner until much later, after Python and
+Rust support has been added.
+
+
+
+

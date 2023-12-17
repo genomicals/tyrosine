@@ -1,6 +1,11 @@
+mod genome;
+mod creature;
+
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -12,3 +17,4 @@ mod tests {
         assert_eq!(result, 4);
     }
 }
+

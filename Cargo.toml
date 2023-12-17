@@ -4,7 +4,6 @@ members = [
     "base",
     "neat-rs",
     "neat-py",
-    "neat-go",
 ]
 resolver = "1"
 
