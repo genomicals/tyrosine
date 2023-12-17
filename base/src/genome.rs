@@ -81,6 +81,7 @@ impl Genome {
         })
     }
 
+
     /// Converts the current genome into bytes.
     ///
     /// Important for saving a genome.

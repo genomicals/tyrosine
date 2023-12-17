@@ -1,3 +1,30 @@
+Want flexible use between CUDA and no CUDA, we want to test different
+implementations of the neural networks, and the best way is to create different
+Creature types, each with a different implementation. Since a GenerationManager
+must manage a population of creatures, and each creature should simply be a
+pointer to a creature because they may be able to transfer between generations,
+we should simply allow GenerationManager to store pointers to objects which
+implement a Creature trait. This way we can keep it flexible. If the setting to
+disallow generation hopping is enabled then it would be rather slow to use a
+bunch of pointers instead of contiguous memory but since we don't know what
+implementation we'll be using we may not be able to create a GenerationManager
+that can store a contiguous block of creatures. Actually it may be possible
+anyway with enums. If we make an enum, one for each implementation, then the
+GenerationManager will be just fine. In this case we can simply make a
+GenerationManager trait, and have two types of GenerationManager, one that uses
+pointers to objects and allows generation hopping, and one contiguous one that
+disallows generation hopping. These can both be benchmarked.
+-tldr; different Creature implementations depending on the neural network
+type and a centralized Creature trait, and two GenerationManagers (one
+contiguous and one pointers) with a common GenerationManager trait
+
+
+
+Python will have a Pythonized GenerationManager object, which will simply
+contain a pointer to an object that implements the GenerationManager trait.
+
+
+
 For Go, maybe create simple functions and such, and create a Go file that will
 create structs and methods and interface with the simplified NEAT interface.
 This method may be necessary because I'm not sure if ABI supports structs. Even
