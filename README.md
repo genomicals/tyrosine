@@ -1,4 +1,5 @@
 # Tyrosine
+![Tyrosine Mascot](assets/mascot.png?raw=true "Tyrosine")
 NEAT machine learning library for Rust and Python (through PyO3).
 
 ## License
