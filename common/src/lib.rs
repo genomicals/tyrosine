@@ -1,5 +1,6 @@
 mod genome;
 mod creature;
+mod generation_manager;
 
 
 pub fn add(left: usize, right: usize) -> usize {
