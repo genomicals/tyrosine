@@ -61,6 +61,10 @@ impl Genome {
                 enabled:
                     bool::from(bytes[offset] == 1) //appears first in the file
             };
+            if new_connection.weight.is_nan() ||
+                    new_connection.weight.is_infinite() { //disallow NaN and infinity
+                return None;
+            }
 
             connections.push(new_connection);
             offset += 13; //shift onto the next gene
@@ -73,13 +77,6 @@ impl Genome {
 
         // collect node genes
         loop {
-            //if (bytes.len() - offset) % 8 != 0 { //invalid file size
-            //    println!("a");
-            //    return None;
-            //}
-            //if bytes.len() - offset < 0 { //if we've reached the end of the file
-            //    break;
-            //}
             if offset >= bytes.len() { //end of file
                 break;
             }
@@ -112,8 +109,12 @@ impl Genome {
     /// Converts the current genome into bytes.
     ///
     /// Important for saving a genome.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
+    pub fn as_bytes(&self, input_nodes: u32, output_nodes: u32) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(
+            9 + self.connections.len()*13 + self.nodes.len()*8
+        );
+        bytes.extend_from_slice(&input_nodes.to_le_bytes());
+        bytes.extend_from_slice(&output_nodes.to_le_bytes());
         for connection in &self.connections {
             bytes.push(connection.enabled as u8);
             bytes.extend_from_slice(&connection.in_node.to_le_bytes());
@@ -123,6 +124,7 @@ impl Genome {
         bytes.push(2); //delimiter
         for node in &self.nodes {
             bytes.extend_from_slice(&node.bias.to_le_bytes());
+            bytes.extend_from_slice(&node.id.to_le_bytes());
         }
         bytes
     }
@@ -253,6 +255,22 @@ mod tests {
             None => assert!(false),
             Some(_) => assert!(true),
         }
+    }
+    #[test]
+    fn to_from_test0() {
+        let mut bytes = vec![0; 30];
+        bytes[0] = 5; //input
+        bytes[4] = 8; //output
+        bytes[21] = 2; //delimiter
+        let (gen, inp, outp) = match Genome::from_bytes(&bytes) {
+            None => {
+                assert!(false);
+                return;
+            },
+            Some(x) => x,
+        };
+        let bytes_new = gen.as_bytes(inp, outp);
+        assert_eq!(bytes, bytes_new);
     }
 }
 
