@@ -2,6 +2,7 @@ use ordered_float::OrderedFloat;
 
 #[derive(Clone, Debug, Hash)]
 pub struct NodeGene {
+    id: u32,
     bias: OrderedFloat<f32>,
 }
 
@@ -23,14 +24,25 @@ pub struct Genome {
 }
 impl Genome {
     /// Attempts to create a genome from the provided bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        let mut offset = 0;
+    pub fn from_bytes(bytes: &[u8]) -> Option<(Self, u32, u32)> {
         let mut connections = Vec::new();
+
+        // read input and output sizes
+        if bytes.len() < 8 {
+            return None
+        }
+        let input_size = u32::from_le_bytes(bytes[0..4].try_into().unwrap());
+        let output_size = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
+        let mut offset = 8;
 
         // collect connection genes
         loop {
-            if bytes[offset] > 1 { //if we found a delimiter then switch to nodes
+            if bytes.len() - offset > 0 && bytes[offset] > 1 { //if we found a delimiter then switch to nodes
+                offset += 1;
                 break;
+            }
+            if bytes.len() - offset < 13 { //ensure we have a valid size
+                return None;
             }
             bytes.get(12)?; //ensure we have enough elements
             let new_connection = ConnectionGene { //create the connection gene
@@ -55,30 +67,45 @@ impl Genome {
         }
 
         let mut nodes = Vec::new();
+        if (bytes.len() - offset) % 8 != 0 { //invalid file size
+            return None;
+        }
 
         // collect node genes
         loop {
-            if let None = bytes.get(offset+3) { //check if we've hit the end of the file
-                if let None = bytes.get(offset) { //we had some values still, file was invalid
-                    break;
-                }
-                return None;
+            //if (bytes.len() - offset) % 8 != 0 { //invalid file size
+            //    println!("a");
+            //    return None;
+            //}
+            //if bytes.len() - offset < 0 { //if we've reached the end of the file
+            //    break;
+            //}
+            if offset >= bytes.len() { //end of file
+                break;
             }
             let new_node = NodeGene { //create the node gene
                 bias:
                     OrderedFloat(f32::from_le_bytes(
                         bytes[offset..offset+4].try_into().unwrap()
                     )),
+                id:
+                    u32::from_le_bytes(
+                        bytes[offset+4..offset+8].try_into().unwrap()
+                    ),
             };
 
             nodes.push(new_node);
-            offset += 4; //shift onto the next gene
+            offset += 8; //shift onto the next gene
         }
 
-        Some(Genome {
-            nodes,
-            connections,
-        })
+        Some((
+            Genome {
+                nodes,
+                connections,
+            },
+            input_size, //for verification that this genome is compatible
+            output_size,
+        ))
     }
 
 
@@ -101,6 +128,133 @@ impl Genome {
     }
 }
 
+
+
+
+
+/* =====================
+        TESTING
+===================== */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_bytes_invalid0() {
+        let bytes = vec![];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid1() {
+        let bytes = vec![0; 1];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid2() {
+        let bytes = vec![0; 2];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid3() {
+        let bytes = vec![0; 3];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid4() {
+        let bytes = vec![0; 4];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid5() {
+        let bytes = vec![0; 5];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid6() {
+        let bytes = vec![0; 6];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid7() {
+        let bytes = vec![0; 7];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid8() {
+        let bytes = vec![0; 8];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_invalid9() {
+        let bytes = vec![0; 9];
+        match Genome::from_bytes(&bytes) {
+            None => assert!(true),
+            Some(_) => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_valid0() {
+        let mut bytes = vec![0; 9];
+        bytes[0] = 5; //input
+        bytes[4] = 8; //output
+        bytes[8] = 2; //delimiter
+        match Genome::from_bytes(&bytes) {
+            None => assert!(false),
+            Some((_, 5, 8)) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+    #[test]
+    fn from_bytes_valid1() {
+        let mut bytes = vec![0; 17];
+        bytes[0] = 5; //input
+        bytes[4] = 8; //output
+        bytes[8] = 2; //delimiter
+        match Genome::from_bytes(&bytes) {
+            None => assert!(false),
+            Some(_) => assert!(true),
+        }
+    }
+    #[test]
+    fn from_bytes_valid2() {
+        let mut bytes = vec![0; 30];
+        bytes[0] = 5; //input
+        bytes[4] = 8; //output
+        bytes[21] = 2; //delimiter
+        match Genome::from_bytes(&bytes) {
+            None => assert!(false),
+            Some(_) => assert!(true),
+        }
+    }
+}
 
 
 

@@ -33,4 +33,16 @@ Rust support has been added.
 
 
 
+Read genomes from file in two ways: no mangle and mangle. With mangle, the
+original node id's are thrown out and recalculated to maximize upper space. In
+this way, there is a small amount of processing time at the start, but it
+ensures id's are reset so that unused id's can be used once again instead of
+skipped. With no mangle, the id's as saved are used. This means comparisons
+between generations are possible, at the cost of not being able to reuse id's
+that have dropped support. No mangle will be the default for now, but with the
+option of allowing id mangling.
+
+
+
+
 

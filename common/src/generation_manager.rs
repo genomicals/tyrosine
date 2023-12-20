@@ -2,12 +2,24 @@ use crate::creature::Creature;
 use std::{rc::Rc, cell::RefCell};
 
 
+
+/* =====================
+         TRAITS
+===================== */
+
+
 /// Generic trait for all generation manager types
-pub trait GenerationManager<'a, T:Creature> {
+pub trait GenerationManager<T:Creature+Clone> {
     fn with_creatures(&mut self, creatures: Vec<T>);
-    fn get_population(&self) -> Vec<&'a T>;
+    fn get_population(&self) -> Vec<T>;
     fn evolve(rankings: &Vec<u32>);
 }
+
+
+
+/* =====================
+        STRUCTS
+===================== */
 
 
 /// A generation manager with references to creatures
@@ -17,7 +29,7 @@ pub struct RefGenerationManager<T: Creature> {
     pub input_count: u32,
     pub output_count: u32,
 }
-impl<'a, T:Creature> GenerationManager<'a, T> for RefGenerationManager<T> {
+impl<T:Creature+Clone> GenerationManager<T> for RefGenerationManager<T> {
     fn with_creatures(&mut self, creatures: Vec<T>) {
         self.population = creatures
             .into_iter()
@@ -26,13 +38,8 @@ impl<'a, T:Creature> GenerationManager<'a, T> for RefGenerationManager<T> {
     }
 
 
-    fn get_population(&self) -> Vec<&'a T> {
-
-        //let x = self.population[0].clone();
-        //let y = x.borrow();
-        //let z = &*y;
-
-        self.population.iter().map(|x| x.borrow().into()).collect()
+    fn get_population(&self) -> Vec<T> {
+        self.population.iter().map(|x| x.borrow().clone()).collect()
     }
 
 
@@ -50,18 +57,17 @@ pub struct ContigGenerationManager<T: Creature> {
     pub output_count: u32,
 
 }
-impl<'a, T:Creature> GenerationManager<'a, T> for ContigGenerationManager<T> {
+impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
     fn with_creatures(&mut self, creatures: Vec<T>) {
         self.population = creatures;
     }
-    fn get_population(&self) -> Vec<&'a T> {
-        let mut ret = Vec::with_capacity(self.population_size);
-        for c in &self.population {
-            ret.push(c);
-        }
-        ret
-        //self.population.iter().map(|x| x.into()).collect()
+
+
+    fn get_population(&self) -> Vec<T> {
+        self.population.iter().map(|x| x.clone()).collect()
     }
+
+
     fn evolve(rankings: &Vec<u32>) {
     }
 

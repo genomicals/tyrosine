@@ -1,13 +1,13 @@
 
 
-Algorithm: AAA (original description)
+Algorithm: 6A (original description)
 
-Arguably one of the hardest algorithms was that of converting a genome into
-some representation that would run efficiently on CUDA hardware. For code to
-run effectively on a graphics card, it must be able to run in parallel with
-very few branches. With a normal neural network with a static structure, this
-is very simple; it can be implemented as a series of matrix multiplications and
-vector additions. With NEAT, however, there are no true layers. Any node could
+Arguably one of the hardest algorithms was that of converting a genome into some
+representation that would run efficiently on CUDA hardware. For code to run
+effectively on a graphics card, it must be able to run in parallel with very few
+branches. With a normal neural network with a static structure, this is very
+simple; it can be implemented as a series of matrix multiplications and vector
+additions. With NEAT, however, there are no true layers. Any node could
 realistically connect to any other node as long as cycles aren’t created in the
 process. Additionally, we needed to check for cycles in the neural network to
 ensure these genomes wouldn’t be placed into the population. Therefore, a
@@ -15,23 +15,22 @@ meticulous algorithm was designed.
 
 The first step is to create a set of buckets, one for each node that a
 connection has as an in-node. These buckets will contain all the output-nodes.
-As such all the neural network inputs will have their own bucket, assuming
-there exists a connection attached to it, and none of the neural network
-outputs would have their own bucket (but they should be present in some). Then
-we create a small list of all the input nodes, which we will call L. We label
-these nodes with a tag of 0. We take L, and for each node we replace it with
-all of the nodes present in its bucket, creating L’ in the process. We remove
-repeats so that each node in L’ is unique. We label all of these nodes with a
-tag of 1. We repeat this process, replacing each node with all the nodes from
-its bucket. Each time, we also remove all nodes that are part of the neural
-network output. We continue iterating until either we find an L’ that we’ve
-seen before (meaning the neural network is cyclic), or until L’ is empty. Now
-all the nodes are labeled with some tag. This tag represents the “layer” that
-they’re a part of. Any node only depends on nodes in previous layers, and only
-has dependencies in layers after it. This can be seen as a type of topological
-sort. This is a bit of an abstraction, however, because in truth the tag is
-applied to the connections which emerge from these nodes. This is important in
-the next step.
+As such all the neural network inputs will have their own bucket, assuming there
+exists a connection attached to it, and none of the neural network outputs would
+have their own bucket (but they should be present in some). Then we create a
+small list of all the input nodes, which we will call L. We label these nodes
+with a tag of 0. We take L, and for each node we replace it with all of the
+nodes present in its bucket, creating L’ in the process. We remove repeats so
+that each node in L’ is unique. We label all of these nodes with a tag of 1. We
+repeat this process, replacing each node with all the nodes from its bucket.
+Each time, we also remove all nodes that are part of the neural network output.
+We continue iterating until either we find an L’ that we’ve seen before (meaning
+the neural network is cyclic), or until L’ is empty. Now all the nodes are
+labeled with some tag. This tag represents the “layer” that they’re a part of.
+Any node only depends on nodes in previous layers, and only has dependencies in
+layers after it. This can be seen as a type of topological sort. This is a bit
+of an abstraction, however, because in truth the tag is applied to the
+connections which emerge from these nodes. This is important in the next step.
 
 The final step is to create a set of six arrays. The first three arrays are the
 multiplier array, the source array, and the destination array. These three are
@@ -47,18 +46,27 @@ each element in the multiplier threads array is the size of each layer. Next
 there’s the output/lookup array. This array has a slot for every active node in
 the neural network. Values from inbound connections are accumulated in this
 array, after which the node’s sum is normalized in preparation to be used as a
-lookup for later connections. The spaces are ordered by layer as well, just
-like the first three arrays. All spaces are initialized to 0 except for the
-bias, which is initialized to 1. Finally we have the output threads array. This
+lookup for later connections. The spaces are ordered by layer as well, just like
+the first three arrays. All spaces are initialized to 0 except for the bias,
+which is initialized to 1. Finally we have the output threads array. This
 array’s size is the number of layers. Each element is valued at the number of
 nodes a certain layer outputs to. For example some layers may have x
 connections but only output to y nodes where y < x.
 
-These six arrays are then fed to our CUDA code, which spawn threads based on
-the multiplier threads and output threads arrays, and these operate on the four
+These six arrays are then fed to our CUDA code, which spawn threads based on the
+multiplier threads and output threads arrays, and these operate on the four
 other arrays. As a result, the code for processing a given game state while
 respecting the structure specified by the NEAT genome is incredibly fast. The
 construction of these six arrays happens once when a new genome is created.
 
+
+
+
+Algorithm: Web
+
+In the Web algorithm, we'll simply build a web of nodes that resemble the
+abstract image of a neural network. No fancy implementations, no nothing. CPU
+bound mostly, no GPU. Mostly just for verifiying that other algorithm works and
+for a benchmark comparison.
 
 
