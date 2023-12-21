@@ -1,4 +1,5 @@
 use ordered_float::OrderedFloat;
+use rand::{self, rngs::ThreadRng, Rng};
 
 
 #[derive(Clone, Debug, Hash)]
@@ -14,6 +15,7 @@ pub struct ConnectionGene {
     pub out_node: u32,
     pub weight: OrderedFloat<f32>,
     pub enabled: bool,
+    pub innov: u32,
 }
 
 
@@ -24,7 +26,39 @@ pub struct Genome {
 
 }
 impl Genome {
+    /// Creates a new randomized simple Genome.
+    pub fn new_random(input_size: u32, output_size: u32, rng: &mut ThreadRng) -> Self {
+        let mut nodes = Vec::with_capacity((input_size + output_size) as usize);
+        let mut connections = Vec::with_capacity((input_size * output_size) as usize);
+
+        // push all new nodes
+        for i in 0..input_size+output_size {
+            nodes.push(NodeGene {
+                id: i,
+                bias: OrderedFloat(rng.gen_range(-5.0..5.0))
+            });
+        }
+
+        // push all new connections
+        for i in 0..input_size {
+            for j in 0..output_size {
+                connections.push(ConnectionGene {
+                    in_node: i,
+                    out_node: j,
+                    weight: OrderedFloat(rng.gen_range(-5.0..5.0)),
+                    enabled: rng.gen_bool(0.5),
+                    innov: i * output_size + j, //each innov is unique yet consistent
+                })
+            }
+        }
+
+        Genome { nodes, connections }
+    }
+
+
     /// Attempts to create a genome from the provided bytes.
+    ///
+    /// Needs to have its innovation numbers filled by an owner struct.
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut connections = Vec::new();
         let mut offset = 0;
@@ -53,7 +87,10 @@ impl Genome {
                         bytes[offset+9..offset+13].try_into().unwrap()
                     )),
                 enabled:
-                    bool::from(bytes[offset] == 1) //appears first in the file
+                    bool::from(bytes[offset] == 1), //appears first in the file
+                innov:
+                    0, //this should be filled in later by the GenerationManager
+
             };
             if new_connection.weight.is_nan() ||
                     new_connection.weight.is_infinite() { //disallow NaN and infinity
