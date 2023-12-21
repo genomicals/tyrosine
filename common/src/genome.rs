@@ -1,39 +1,33 @@
 use ordered_float::OrderedFloat;
 
+
 #[derive(Clone, Debug, Hash)]
 pub struct NodeGene {
-    id: u32,
-    bias: OrderedFloat<f32>,
+    pub id: u32,
+    pub bias: OrderedFloat<f32>,
 }
 
 
 #[derive(Clone, Debug, Hash)]
 pub struct ConnectionGene {
-    in_node: u32,
-    out_node: u32,
-    weight: OrderedFloat<f32>,
-    enabled: bool,
+    pub in_node: u32,
+    pub out_node: u32,
+    pub weight: OrderedFloat<f32>,
+    pub enabled: bool,
 }
 
 
 #[derive(Clone, Debug, Hash)]
 pub struct Genome {
-    nodes: Vec<NodeGene>,
-    connections: Vec<ConnectionGene>,
+    pub nodes: Vec<NodeGene>,
+    pub connections: Vec<ConnectionGene>,
 
 }
 impl Genome {
     /// Attempts to create a genome from the provided bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Option<(Self, u32, u32)> {
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut connections = Vec::new();
-
-        // read input and output sizes
-        if bytes.len() < 8 {
-            return None
-        }
-        let input_size = u32::from_le_bytes(bytes[0..4].try_into().unwrap());
-        let output_size = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
-        let mut offset = 8;
+        let mut offset = 0;
 
         // collect connection genes
         loop {
@@ -95,26 +89,20 @@ impl Genome {
             offset += 8; //shift onto the next gene
         }
 
-        Some((
-            Genome {
+        Some(Genome {
                 nodes,
                 connections,
-            },
-            input_size, //for verification that this genome is compatible
-            output_size,
-        ))
+        })
     }
 
 
     /// Converts the current genome into bytes.
     ///
     /// Important for saving a genome.
-    pub fn as_bytes(&self, input_nodes: u32, output_nodes: u32) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(
-            9 + self.connections.len()*13 + self.nodes.len()*8
+            1 + self.connections.len()*13 + self.nodes.len()*8
         );
-        bytes.extend_from_slice(&input_nodes.to_le_bytes());
-        bytes.extend_from_slice(&output_nodes.to_le_bytes());
         for connection in &self.connections {
             bytes.push(connection.enabled as u8);
             bytes.extend_from_slice(&connection.in_node.to_le_bytes());
@@ -224,22 +212,16 @@ mod tests {
     }
     #[test]
     fn from_bytes_valid0() {
-        let mut bytes = vec![0; 9];
-        bytes[0] = 5; //input
-        bytes[4] = 8; //output
-        bytes[8] = 2; //delimiter
+        let bytes = vec![2];
         match Genome::from_bytes(&bytes) {
             None => assert!(false),
-            Some((_, 5, 8)) => assert!(true),
-            _ => assert!(false),
+            Some(_) => assert!(true),
         }
     }
     #[test]
     fn from_bytes_valid1() {
-        let mut bytes = vec![0; 17];
-        bytes[0] = 5; //input
-        bytes[4] = 8; //output
-        bytes[8] = 2; //delimiter
+        let mut bytes = vec![0; 9];
+        bytes[0] = 2; //delimiter
         match Genome::from_bytes(&bytes) {
             None => assert!(false),
             Some(_) => assert!(true),
@@ -247,10 +229,8 @@ mod tests {
     }
     #[test]
     fn from_bytes_valid2() {
-        let mut bytes = vec![0; 30];
-        bytes[0] = 5; //input
-        bytes[4] = 8; //output
-        bytes[21] = 2; //delimiter
+        let mut bytes = vec![0; 22];
+        bytes[13] = 2; //delimiter
         match Genome::from_bytes(&bytes) {
             None => assert!(false),
             Some(_) => assert!(true),
@@ -258,18 +238,16 @@ mod tests {
     }
     #[test]
     fn to_from_test0() {
-        let mut bytes = vec![0; 30];
-        bytes[0] = 5; //input
-        bytes[4] = 8; //output
-        bytes[21] = 2; //delimiter
-        let (gen, inp, outp) = match Genome::from_bytes(&bytes) {
+        let mut bytes = vec![0; 22];
+        bytes[13] = 2; //delimiter
+        let gen = match Genome::from_bytes(&bytes) {
             None => {
                 assert!(false);
                 return;
             },
             Some(x) => x,
         };
-        let bytes_new = gen.as_bytes(inp, outp);
+        let bytes_new = gen.as_bytes();
         assert_eq!(bytes, bytes_new);
     }
 }

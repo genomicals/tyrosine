@@ -1,4 +1,5 @@
 mod genome;
+mod topo;
 mod creature;
 mod generation_manager;
 

@@ -43,6 +43,16 @@ that have dropped support. No mangle will be the default for now, but with the
 option of allowing id mangling.
 
 
-
+Once a GenerationManager has created its population, it needs to generate
+global innovation numbers. These will be generated every time a new set of
+genomes are imported or created from scratch. The requirements for this are that
+every unique gene should have its own global innov number, and every genome must
+have genes that have increasing global innov numbers. Might be smart to verify
+that this rule continues to be true. Or maybe the ordering shouldn't necessarily
+be true, just sort a genome just before it needs to reproduce. This may be smart
+because when we generate genes they may be out of order. Honestly no, I should
+sort things when we generate them and before the toposort. There should be a
+verification step just after importing/creating the gene, and also any mutations
+should place the gene in the right place.
 
 
