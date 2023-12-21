@@ -10,7 +10,8 @@ pub struct Buckets<'a> {
 }
 
 
-pub fn buckets_to_topo(buckets: &Buckets, input_nodes: HashSet<u32>, output_nodes: HashSet<u32>) -> Option<Vec<Vec<u32>>> {
+/// Takes a set of buckets, input nodes, and output nodes, and toposorts them
+pub fn buckets_to_topo(buckets: &Buckets, input_nodes: &HashSet<u32>, output_nodes: &HashSet<u32>) -> Option<Vec<Vec<u32>>> {
     let mut cur_layer: Vec<u32> = input_nodes.iter().map(|x| x.clone()).collect();
     let mut layers: Vec<Vec<u32>> = Vec::new();
     let mut past_layers: HashSet<Vec<u32>> = HashSet::new();
@@ -57,16 +58,15 @@ pub fn genome_to_buckets(genome: &Genome) -> Option<Buckets> {
         if !conn.enabled { //skip any disabled genes
             continue;
         }
-        match connection_lookup.insert((conn.in_node, conn.out_node), conn) { //push to lookup
+
+        //push to lookup
+        match connection_lookup.insert((conn.in_node, conn.out_node), conn) {
             Some(_) => return None, //error if we've seen this before
             None => {}, //good
         }
-        //if outward_connections.contains_key(&conn.in_node) { //add connection to bucket
-        //    outward_connections.get_mut(&conn.in_node).unwrap().push(conn.out_node);
-        //} else {
-        //    outward_connections.insert(conn.in_node, vec![conn.out_node]);
-        //}
-        match outward_connections.get_mut(&conn.in_node) { //add connection to bucket
+
+        // add connection to bucket
+        match outward_connections.get_mut(&conn.in_node) {
             Some(x) => {
                 x.push(conn.out_node);
             },
