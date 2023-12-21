@@ -11,12 +11,6 @@ pub struct Buckets<'a> {
 
 
 pub fn buckets_to_topo(buckets: &Buckets, input_nodes: HashSet<u32>, output_nodes: HashSet<u32>) -> Option<Vec<Vec<u32>>> {
-    //let 
-    //let x = vec![1, 2, 3, 4, 3, 2, 1];
-    //let mut h: HashMap<Vec<u8>, u8> = HashMap::new();
-    //let z = x[0];
-    //h.insert(x, z);
-
     let mut cur_layer: Vec<u32> = input_nodes.iter().map(|x| x.clone()).collect();
     let mut layers: Vec<Vec<u32>> = Vec::new();
     let mut past_layers: HashSet<Vec<u32>> = HashSet::new();
@@ -25,14 +19,9 @@ pub fn buckets_to_topo(buckets: &Buckets, input_nodes: HashSet<u32>, output_node
     past_layers.insert(layer_copy.clone()); //hash this layer
     layers.push(layer_copy); //remember this layer
 
-    //for  in &buckets.outward_connections {
-    //    let mut new_layer = Vec::new();
-    //    for 
-
-    //}
-
+    // iteratively generate and verify the next layer
     loop {
-        //let new_layer: Vec<u32> = cur_layer.iter().map(|x| buckets.outward_connections[x].clone()).flatten().collect();
+        // replace all nodes with their outwardly connected nodes
         let new_layer: Vec<u32> = cur_layer
             .iter()
             .flat_map(|x| buckets.outward_connections[x].clone())
@@ -43,9 +32,10 @@ pub fn buckets_to_topo(buckets: &Buckets, input_nodes: HashSet<u32>, output_node
             break;
         }
 
+        // ensure we haven't seen this before
         let layer_copy = new_layer.clone();
         if past_layers.contains(&layer_copy) {
-            return None; //cyclic
+            return None; //cyclic, invalid genome
         } else {
             past_layers.insert(layer_copy);
         }
