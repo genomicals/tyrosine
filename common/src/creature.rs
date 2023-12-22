@@ -54,8 +54,19 @@ impl Creature for A6Creature {
             .map(|x| x.id)
             .collect();
         let topo = buckets_to_topo(&buckets, &input_nodes, &output_nodes)?;
-        todo!()
+
+        // declare arrays
+        let mut mul = Vec::with_capacity(buckets.connection_lookup.len());
+        let mut src = Vec::with_capacity(buckets.connection_lookup.len());
+        let mut dest = Vec::with_capacity(buckets.connection_lookup.len());
+        let mut lookup = Vec::with_capacity(buckets.outward_connections.len());
+        let mut calc_threads = Vec::with_capacity(topo.len());
+        let mut norm_threads = Vec::with_capacity(topo.len());
+
+
+
     }
+
 
     fn calculate(input: &[f32]) -> Vec<f32> {
         todo!()

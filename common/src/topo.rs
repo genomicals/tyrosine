@@ -4,9 +4,9 @@ use crate::genome::{Genome, ConnectionGene, NodeGene};
 
 
 pub struct Buckets<'a> {
-    outward_connections: HashMap<u32, Vec<u32>>,
-    node_lookup: HashMap<u32, &'a NodeGene>,
-    connection_lookup: HashMap<(u32, u32), &'a ConnectionGene>,
+    pub outward_connections: HashMap<u32, HashSet<u32>>,
+    pub node_lookup: HashMap<u32, &'a NodeGene>,
+    pub connection_lookup: HashMap<(u32, u32), &'a ConnectionGene>,
 }
 
 
@@ -54,8 +54,7 @@ pub fn buckets_to_topo(buckets: &Buckets, input_nodes: &HashSet<u32>, output_nod
 ///
 /// Returns None when genome has repeated genes.
 pub fn genome_to_buckets(genome: &Genome) -> Option<Buckets> {
-    let mut outward_connections: HashMap<u32, Vec<u32>> = HashMap::new();
-    let mut connection_lookup: HashMap<(u32, u32), &ConnectionGene> = HashMap::new();
+    let mut outward_connections_unmapped: HashMap<u32, HashSet<u32>> = HashMap::new();
 
     // create connection lookup table (and buckets)
     for conn in &genome.connections {
@@ -64,24 +63,22 @@ pub fn genome_to_buckets(genome: &Genome) -> Option<Buckets> {
         }
 
         //push to lookup
-        match connection_lookup.insert((conn.in_node, conn.out_node), conn) {
-            Some(_) => return None, //error if we've seen this before
-            None => {}, //good
-        }
+        //match connection_lookup.insert((conn.in_node, conn.out_node), conn) {
+        //    Some(_) => return None, //error if we've seen this before
+        //    None => {}, //good
+        //}
 
         // add connection to bucket
-        match outward_connections.get_mut(&conn.in_node) {
+        match outward_connections_unmapped.get_mut(&conn.in_node) {
             Some(x) => {
-                x.push(conn.out_node);
+                if !x.insert(conn.out_node) { return None }; //repeated gene
             },
-            None => {
-                outward_connections.insert(conn.in_node, vec![conn.out_node]);
-            },
+            None => { outward_connections_unmapped.insert(conn.in_node, HashSet::from([conn.out_node])); }, //cannot already exist
         }
     }
 
     // create id map for active nodes (collapse the ids)
-    let active_nodes: HashSet<u32> = outward_connections
+    let active_nodes: HashSet<u32> = outward_connections_unmapped
         .keys()
         .cloned()
         .collect();
@@ -93,6 +90,39 @@ pub fn genome_to_buckets(genome: &Genome) -> Option<Buckets> {
         .enumerate()
         .map(|x| (x.1.clone(), x.0 as u32) ) //(id_old, id_new)
         .collect();
+    
+    let mut connection_lookup: HashMap<(u32, u32), &ConnectionGene> = HashMap::new();
+
+    //for bucket in outward_connections_unmapped {
+    //    for 
+    //    
+    //}
+    //for conn in 
+
+    let mut outward_connections: HashMap<u32, HashSet<u32>> = HashMap::new();
+
+    // create updated buckets
+    for conn in &genome.connections {
+        let mapped_in = id_map[&conn.in_node];
+        let mapped_out = id_map[&conn.out_node];
+
+        // build mapped outward_connections
+        if outward_connections_unmapped.contains_key(&mapped_in) &&
+                outward_connections_unmapped[&mapped_in].contains(&mapped_out) {
+            match outward_connections.get_mut(&mapped_in) {
+                Some(x) => { x.insert(mapped_out); }, //cannot be repeated
+                None => { outward_connections.insert(mapped_in, HashSet::from([mapped_out])); }, //cannot already exist
+            }
+        } else {
+            continue; //irrelevant connection
+        }
+
+        // build connection lookup
+        match connection_lookup.insert((mapped_in, mapped_out), conn) {
+            Some(_) => return None, //repeated gene
+            None => {}, //good
+        }
+    }
 
     // create node lookup table
     let mut node_lookup = HashMap::with_capacity(id_map.len());
