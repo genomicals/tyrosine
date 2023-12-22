@@ -2,7 +2,6 @@ use crate::creature::Creature;
 use std::{rc::Rc, cell::RefCell};
 
 
-
 /* =====================
          TRAITS
 ===================== */
@@ -72,5 +71,6 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
     }
 
 }
+
 
 

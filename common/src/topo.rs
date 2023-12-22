@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet};
-
 use sorted_vec::SortedSet;
-
 use crate::genome::{Genome, ConnectionGene, NodeGene};
 
 
@@ -59,22 +57,6 @@ pub fn genome_to_buckets(genome: &Genome) -> Option<Buckets> {
     let mut outward_connections: HashMap<u32, Vec<u32>> = HashMap::new();
     let mut connection_lookup: HashMap<(u32, u32), &ConnectionGene> = HashMap::new();
 
-    // first grab all active nodes and reassign the ids
-    //let all_nodes: HashSet<u32> = genome
-    //    .connections
-    //    .iter()
-    //    .filter(|x| x.enabled)
-    //    .flat_map(|x| [x.in_node, x.out_node])
-    //    .collect();
-    //let all_nodes_vec: Vec<u32> = all_nodes
-    //    .into_iter()
-    //    .collect();
-    //let id_map: HashMap<u32, u32> = SortedSet::from(all_nodes_vec) //sort, then map
-    //    .iter()
-    //    .enumerate()
-    //    .map(|x| (x.0 as u32, x.1.clone())) //(id_new, id_old)
-    //    .collect();
-
     // create connection lookup table (and buckets)
     for conn in &genome.connections {
         if !conn.enabled { //skip any disabled genes
@@ -109,7 +91,6 @@ pub fn genome_to_buckets(genome: &Genome) -> Option<Buckets> {
     let id_map: HashMap<u32, u32> = SortedSet::from(all_nodes_vec) //sort, then map
         .iter()
         .enumerate()
-        //.map(|x| (x.0 as u32, x.1.clone())) //(id_new, id_old)
         .map(|x| (x.1.clone(), x.0 as u32) ) //(id_old, id_new)
         .collect();
 
@@ -154,5 +135,6 @@ mod tests {
         assert_eq!(x.len(), 1);
     }
 }
+
 
 

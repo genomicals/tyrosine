@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-
 use crate::{genome::Genome, topo::{genome_to_buckets, buckets_to_topo}};
 
 
@@ -63,12 +62,5 @@ impl Creature for A6Creature {
     }
 }
 
-
-///// A creature with a graph-based neural net.
-/////
-///// Not GPU compatible.
-//pub struct WebCreature {
-//
-//}
 
 
