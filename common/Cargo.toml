@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 ordered-float = "4.2.0"
 rand = "0.8.5"
+sorted-vec = "0.8.3"
