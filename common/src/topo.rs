@@ -2,10 +2,82 @@ use std::collections::{HashMap, HashSet};
 use crate::genome::{Genome, ConnectionGene, NodeGene};
 
 
-pub struct BucketsWrapper<'a> {
-    pub buckets: HashMap<u32, HashSet<u32>>,
-    pub node_lookup: HashMap<u32, &'a NodeGene>,
-    pub connection_lookup: HashMap<(u32, u32), &'a ConnectionGene>,
+/// Creates a map for the node biases.
+///
+/// Input ids will be extracted too despite their bias meaning nothing.
+pub fn create_bias_map(
+    genome: &Genome,
+    buckets: &HashMap<u32, HashMap<u32, f32>>,
+    mapping: &HashMap<u32, u32>,
+    output_nodes: &HashSet<u32>,
+) -> HashMap<u32, f32> {
+    let mut ids: HashSet<u32> = buckets.keys().map(|x| *x).collect(); //get ids of nodes that have dependents
+    ids.extend(output_nodes); //all output nodes have bias
+    let mut biases: HashMap<u32, f32> = HashMap::with_capacity(ids.len());
+    for node in genome.nodes {
+        if ids.contains(&node.id) {
+            biases.insert(mapping[&node.id], node.bias.0);
+        }
+    }
+    biases
+}
+
+
+/// Reassigns ids in existing data structures.
+///
+/// Remaps topo and buckets
+pub fn remap_data_structures(
+    buckets: &HashMap<u32, HashMap<u32, f32>>,
+    topo: &Vec<Vec<u32>>,
+    mapping: &HashMap<u32, u32>,
+) -> (HashMap<u32, HashMap<u32, f32>>, Vec<Vec<u32>>) {
+    // remap buckets
+    let mut new_buckets = HashMap::with_capacity(buckets.len());
+    for inp_pair in buckets {
+        let mut new_inners = HashMap::with_capacity(inp_pair.1.len());
+        for weight_pair in inp_pair.1 {
+            new_inners.insert(mapping[&weight_pair.0], *weight_pair.1);
+        }
+        new_buckets.insert(mapping[&inp_pair.0], new_inners);
+    }
+
+    // remap topo
+    let mut new_topo = Vec::with_capacity(topo.len());
+    for layer in topo {
+        new_topo.push(layer.iter().map(|x| mapping[x]).collect());
+    }
+
+    (new_buckets, new_topo)
+}
+
+
+/// Collapses the ids to make them continuous.
+///
+/// Returns an id map.
+pub fn collapse_ids(
+    topo: &Vec<Vec<u32>>, //has input nodes as the first layer
+    output_nodes: &HashSet<u32>
+) -> HashMap<u32, u32> {
+    let mut mapping = HashMap::new();
+    let mut new_id = 0;
+
+    // reassign ids in the topo
+    for layer in topo {
+        for id in layer {
+            if !mapping.contains_key(id) {
+                mapping.insert(*id, new_id);
+                new_id += 1;
+            }
+        }
+    }
+
+    // reassign output nodes
+    for id in output_nodes {
+        mapping.insert(*id, new_id);
+        new_id += 1;
+    }
+    
+    mapping
 }
 
 
@@ -13,9 +85,9 @@ pub struct BucketsWrapper<'a> {
 ///
 /// Returns None when neural network is cyclic.
 pub fn toposort(
-    buckets: HashMap<u32, HashMap<u32, f32>>,
-    input_nodes: HashSet<u32>,
-    output_nodes: HashSet<u32>,
+    buckets: &HashMap<u32, HashMap<u32, f32>>,
+    input_nodes: &HashSet<u32>,
+    output_nodes: &HashSet<u32>,
 ) -> Option<Vec<Vec<u32>>> {
     let mut cur_layer: Vec<u32> = input_nodes.iter().map(|x| *x).collect();
     let mut layers: Vec<Vec<u32>> = Vec::new();
@@ -29,8 +101,7 @@ pub fn toposort(
     loop {
         let new_layer: Vec<u32> = cur_layer
             .iter()
-            .flat_map(|x| buckets[x].keys().map(|x| *x).collect::<Vec<u32>>()
-            )
+            .flat_map(|x| buckets[x].keys().map(|x| *x).collect::<Vec<u32>>())
             .collect();
 
         if new_layer.len() == 0 { //finish if we've exhausted all layers
