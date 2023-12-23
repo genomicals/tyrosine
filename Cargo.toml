@@ -2,7 +2,7 @@
 
 members = [
     "tyrosine-common",
-    "tyrosine-rs",
+    "tyrosine",
     "tyrosine-py",
 ]
 resolver = "1"
