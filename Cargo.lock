@@ -21,15 +21,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "ordered-float",
- "rand",
- "sorted-vec",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -70,10 +61,6 @@ checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
 dependencies = [
  "autocfg",
 ]
-
-[[package]]
-name = "neat-rs"
-version = "0.1.0"
 
 [[package]]
 name = "num-traits"
@@ -279,6 +266,22 @@ name = "target-lexicon"
 version = "0.12.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c39fd04924ca3a864207c66fc2cd7d22d7c016007f9ce846cbb9326331930a"
+
+[[package]]
+name = "tyrosine"
+version = "0.0.1"
+dependencies = [
+ "tyrosine-common",
+]
+
+[[package]]
+name = "tyrosine-common"
+version = "0.0.1"
+dependencies = [
+ "ordered-float",
+ "rand",
+ "sorted-vec",
+]
 
 [[package]]
 name = "tyrosine-py"
