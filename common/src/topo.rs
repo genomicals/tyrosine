@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use sorted_vec::SortedSet;
 use crate::genome::{Genome, ConnectionGene, NodeGene};
 
 
@@ -13,8 +12,12 @@ pub struct BucketsWrapper<'a> {
 /// Toposorts a neural network's buckets into layers of node ids.
 ///
 /// Returns None when neural network is cyclic.
-pub fn buckets_to_topo(buckets_wrap: &BucketsWrapper, input_nodes: &HashSet<u32>, output_nodes: &HashSet<u32>) -> Option<Vec<Vec<u32>>> {
-    let mut cur_layer: Vec<u32> = input_nodes.iter().map(|x| x.clone()).collect();
+pub fn toposort(
+    buckets: HashMap<u32, HashMap<u32, f32>>,
+    input_nodes: HashSet<u32>,
+    output_nodes: HashSet<u32>,
+) -> Option<Vec<Vec<u32>>> {
+    let mut cur_layer: Vec<u32> = input_nodes.iter().map(|x| *x).collect();
     let mut layers: Vec<Vec<u32>> = Vec::new();
     let mut past_layers: HashSet<Vec<u32>> = HashSet::new();
 
@@ -24,11 +27,10 @@ pub fn buckets_to_topo(buckets_wrap: &BucketsWrapper, input_nodes: &HashSet<u32>
 
     // iteratively generate and verify the next layer
     loop {
-        // replace all nodes with their outwardly connected nodes
         let new_layer: Vec<u32> = cur_layer
             .iter()
-            .flat_map(|x| buckets_wrap.buckets[x].clone()) //turn into outward nodes
-            .filter(|x| !output_nodes.contains(x)) //remove output nodes
+            .flat_map(|x| buckets[x].keys().map(|x| *x).collect::<Vec<u32>>()
+            )
             .collect();
 
         if new_layer.len() == 0 { //finish if we've exhausted all layers
@@ -45,7 +47,7 @@ pub fn buckets_to_topo(buckets_wrap: &BucketsWrapper, input_nodes: &HashSet<u32>
 
         cur_layer = new_layer;
     }
-    
+
     Some(layers)
 }
 
@@ -53,81 +55,23 @@ pub fn buckets_to_topo(buckets_wrap: &BucketsWrapper, input_nodes: &HashSet<u32>
 /// Converts a genome to buckets with collapsed ids.
 ///
 /// Returns None when genome has repeated genes.
-pub fn genome_to_buckets(genome: &Genome) -> Option<BucketsWrapper> {
-    let mut buckets_unmapped: HashMap<u32, HashSet<u32>> = HashMap::new();
+pub fn generate_buckets(genome: &Genome) -> Option<HashMap<u32, HashMap<u32, f32>>> {
+    let mut buckets: HashMap<u32, HashMap<u32, f32>> = HashMap::new(); //in_node, out_node, weight
 
-    // create connection lookup table (and buckets)
-    for conn in &genome.connections {
-        if !conn.enabled { //skip any disabled genes
-            continue;
-        }
-
-        // add connection to bucket
-        match buckets_unmapped.get_mut(&conn.in_node) {
-            Some(x) => {
-                if !x.insert(conn.out_node) { return None }; //repeated gene
+    // push all active connections to buckets
+    for conn in genome.connections.iter().filter(|x| x.enabled) {
+        match buckets.get_mut(&conn.in_node) {
+            Some(outs) => { //bucket exists already
+                if outs.contains_key(&conn.out_node) { return None; } //repeated gene
+                else { outs.insert(conn.out_node, conn.weight.0); }
             },
-            None => { buckets_unmapped.insert(conn.in_node, HashSet::from([conn.out_node])); }, //cannot already exist
+            None => { //bucket doesn't exist yet
+                buckets.insert(conn.in_node, HashMap::from([(conn.out_node, conn.weight.0)]));
+            },
         }
     }
 
-    // create id map for active nodes (collapse the ids)
-    let active_nodes: HashSet<u32> = buckets_unmapped
-        .keys()
-        .cloned()
-        .collect();
-    let all_nodes_vec: Vec<u32> = active_nodes
-        .into_iter()
-        .collect();
-    let id_map: HashMap<u32, u32> = SortedSet::from(all_nodes_vec) //sort, then map
-        .iter()
-        .enumerate()
-        .map(|x| (x.1.clone(), x.0 as u32) ) //(id_old, id_new)
-        .collect();
-    
-    let mut connection_lookup: HashMap<(u32, u32), &ConnectionGene> = HashMap::new();
-    let mut buckets: HashMap<u32, HashSet<u32>> = HashMap::new(); //buckets
-
-    // create updated buckets
-    for conn in &genome.connections {
-        let mapped_in = id_map[&conn.in_node];
-        let mapped_out = id_map[&conn.out_node];
-
-        // build mapped outward_connections
-        if buckets_unmapped.contains_key(&mapped_in) &&
-                buckets_unmapped[&mapped_in].contains(&mapped_out) {
-            match buckets.get_mut(&mapped_in) {
-                Some(x) => { x.insert(mapped_out); }, //cannot be repeated
-                None => { buckets.insert(mapped_in, HashSet::from([mapped_out])); }, //cannot already exist
-            }
-        } else {
-            continue; //irrelevant connection
-        }
-
-        // build connection lookup
-        match connection_lookup.insert((mapped_in, mapped_out), conn) {
-            Some(_) => return None, //repeated gene
-            None => {}, //good
-        }
-    }
-
-    // create node lookup table
-    let mut node_lookup = HashMap::with_capacity(id_map.len());
-    for node in &genome.nodes {
-        if id_map.contains_key(&node.id) {
-            match node_lookup.insert(id_map[&node.id], node) {
-                Some(_) => return None, //error if duplicate
-                None => {}, //good
-            }
-        }
-    }
-
-    Some(BucketsWrapper {
-        connection_lookup,
-        node_lookup,
-        buckets,
-    })
-
+    Some(buckets)
 }
 
 
