@@ -7,12 +7,9 @@ use crate::genome::{Genome, ConnectionGene, NodeGene};
 /// Input ids will be extracted too despite their bias meaning nothing.
 pub fn create_bias_map(
     genome: &Genome,
-    buckets: &HashMap<u32, HashMap<u32, f32>>,
     mapping: &HashMap<u32, u32>,
-    output_nodes: &HashSet<u32>,
 ) -> HashMap<u32, f32> {
-    let mut ids: HashSet<u32> = buckets.keys().map(|x| *x).collect(); //get ids of nodes that have dependents
-    ids.extend(output_nodes); //all output nodes have bias
+    let ids: Vec<u32> = mapping.keys().map(|x| *x).collect();
     let mut biases: HashMap<u32, f32> = HashMap::with_capacity(ids.len());
     for node in genome.nodes {
         if ids.contains(&node.id) {
@@ -125,9 +122,14 @@ pub fn toposort(
 
 /// Converts a genome to buckets with collapsed ids.
 ///
+/// Removes all nodes that aren't read from.
 /// Returns None when genome has repeated genes.
-pub fn generate_buckets(genome: &Genome) -> Option<HashMap<u32, HashMap<u32, f32>>> {
+pub fn generate_buckets(
+    genome: &Genome,
+    output_nodes: &HashSet<u32>,
+) -> Option<HashMap<u32, HashMap<u32, f32>>> {
     let mut buckets: HashMap<u32, HashMap<u32, f32>> = HashMap::new(); //in_node, out_node, weight
+    let mut active_nodes: HashSet<u32> = HashSet::new(); //keeps track of nodes we've seen
 
     // push all active connections to buckets
     for conn in genome.connections.iter().filter(|x| x.enabled) {
@@ -139,6 +141,22 @@ pub fn generate_buckets(genome: &Genome) -> Option<HashMap<u32, HashMap<u32, f32
             None => { //bucket doesn't exist yet
                 buckets.insert(conn.in_node, HashMap::from([(conn.out_node, conn.weight.0)]));
             },
+        }
+        active_nodes.insert(conn.out_node); //remember this node
+    }
+
+    // now remove all nodes that don't own a bucket (we don't want to send values to these)
+    let true_nodes: HashSet<u32> = buckets.keys().map(|x| *x).collect(); //all nodes with buckets
+    let bad_nodes: Vec<u32> = active_nodes //all nodes to remove from the buckets
+        .difference(&true_nodes) //keep all nodes with buckets
+        .map(|x| *x)
+        .collect::<HashSet<u32>>()
+        .difference(&output_nodes) //keep all output nodes
+        .map(|x| *x)
+        .collect();
+    for (inp_id, mut bucket) in buckets {
+        for id in bad_nodes {
+            bucket.remove(&id); //remove bad nodes from being sent values
         }
     }
 
