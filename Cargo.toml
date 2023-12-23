@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "common",
+    "tyrosine-common",
     "tyrosine-rs",
     "tyrosine-py",
 ]

@@ -36,11 +36,11 @@ pub struct Arrays {
 /// A creature with its neural net represented as a set of six arrays.
 ///
 /// GPU compatible.
-pub struct A6Creature {
+pub struct AtomicCreature {
     pub gpu: bool, //temporary, may be able to detect gpu automatically
     pub arrays: Arrays,
 }
-impl Creature for A6Creature {
+impl Creature for AtomicCreature {
     fn from_genome(genome: Genome, input_size: u32, output_size: u32) -> Option<Self> {
         let buckets_wrap = genome_to_buckets(&genome)?; //to buckets
         let input_nodes: HashSet<u32> = genome //hash input node ids
