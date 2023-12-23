@@ -11,7 +11,7 @@ pub fn create_bias_map(
 ) -> HashMap<u32, f32> {
     let ids: Vec<u32> = mapping.keys().map(|x| *x).collect();
     let mut biases: HashMap<u32, f32> = HashMap::with_capacity(ids.len());
-    for node in genome.nodes {
+    for node in &genome.nodes {
         if ids.contains(&node.id) {
             biases.insert(mapping[&node.id], node.bias.0);
         }
@@ -154,8 +154,8 @@ pub fn generate_buckets(
         .difference(&output_nodes) //keep all output nodes
         .map(|x| *x)
         .collect();
-    for (inp_id, mut bucket) in buckets {
-        for id in bad_nodes {
+    for (inp_id, bucket) in &mut buckets {
+        for id in &bad_nodes {
             bucket.remove(&id); //remove bad nodes from being sent values
         }
     }
