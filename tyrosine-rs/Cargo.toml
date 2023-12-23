@@ -7,7 +7,7 @@ description = "Implementation of NEAT with CUDA support."
 homepage = "https://github.com/genomicals/tyrosine"
 repository = "https://github.com/genomicals/tyrosine/tyrosine-rs"
 categories = ["algorithms", "science"]
-keywords = ["NEAT", "machine", "learning", "neural", "network", "CUDA"]
+keywords = ["NEAT", "machine", "learning", "neural", "CUDA"]
 license = "GPL-2.0 OR GPL-3.0"
 readme = "README.md"
 
