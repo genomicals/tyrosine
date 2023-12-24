@@ -1,5 +1,5 @@
 # Tyrosine
-![Tyrosine Mascot](../assets/mascot.png?raw=true "Tyrosine Mascot")
+![Tyrosine Mascot](https://github.com/genomicals/tyrosine/blob/master/assets/mascot.png)
 Mascot by [@Nauxe](https://github.com/nauxe)
 
 ## Overview
