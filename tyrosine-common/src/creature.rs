@@ -38,7 +38,6 @@ pub struct Arrays {
 ///
 /// GPU compatible.
 pub struct AtomicCreature {
-    pub gpu: bool, //temporary, may be able to detect gpu automatically
     pub arrays: Arrays,
 }
 impl Creature for AtomicCreature {
@@ -95,7 +94,6 @@ impl Creature for AtomicCreature {
         norm_threads.push(output_size); //want to normalize final output
         
         Some(AtomicCreature {
-            gpu: true,
             arrays: Arrays {
                 mul,
                 src,
