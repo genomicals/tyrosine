@@ -7,13 +7,13 @@ use crate::genome::{Genome, ConnectionGene, NodeGene};
 /// Input ids will be extracted too despite their bias meaning nothing.
 pub fn create_bias_map(
     genome: &Genome,
-    mapping: &HashMap<u32, u32>,
+    id_map: &HashMap<u32, u32>,
 ) -> HashMap<u32, f32> {
-    let ids: Vec<u32> = mapping.keys().map(|x| *x).collect();
+    let ids: Vec<u32> = id_map.keys().map(|x| *x).collect();
     let mut biases: HashMap<u32, f32> = HashMap::with_capacity(ids.len());
     for node in &genome.nodes {
         if ids.contains(&node.id) {
-            biases.insert(mapping[&node.id], node.bias.0);
+            biases.insert(id_map[&node.id], node.bias.0);
         }
     }
     biases
@@ -22,26 +22,26 @@ pub fn create_bias_map(
 
 /// Reassigns ids in existing data structures.
 ///
-/// Remaps topo and buckets
+/// Remaps buckets and topo.
 pub fn remap_data_structures(
     buckets: &HashMap<u32, HashMap<u32, f32>>,
     topo: &Vec<Vec<u32>>,
-    mapping: &HashMap<u32, u32>,
+    id_map: &HashMap<u32, u32>,
 ) -> (HashMap<u32, HashMap<u32, f32>>, Vec<Vec<u32>>) {
     // remap buckets
     let mut new_buckets = HashMap::with_capacity(buckets.len());
     for inp_pair in buckets {
         let mut new_inners = HashMap::with_capacity(inp_pair.1.len());
         for weight_pair in inp_pair.1 {
-            new_inners.insert(mapping[&weight_pair.0], *weight_pair.1);
+            new_inners.insert(id_map[&weight_pair.0], *weight_pair.1);
         }
-        new_buckets.insert(mapping[&inp_pair.0], new_inners);
+        new_buckets.insert(id_map[&inp_pair.0], new_inners);
     }
 
     // remap topo
     let mut new_topo = Vec::with_capacity(topo.len());
     for layer in topo {
-        new_topo.push(layer.iter().map(|x| mapping[x]).collect());
+        new_topo.push(layer.iter().map(|x| id_map[x]).collect());
     }
 
     (new_buckets, new_topo)
@@ -53,7 +53,7 @@ pub fn remap_data_structures(
 /// Returns an id map.
 pub fn collapse_ids(
     topo: &Vec<Vec<u32>>, //has input nodes as the first layer
-    output_nodes: &HashSet<u32>
+    output_ids: &HashSet<u32>
 ) -> HashMap<u32, u32> {
     let mut mapping = HashMap::new();
     let mut new_id = 0;
@@ -69,7 +69,7 @@ pub fn collapse_ids(
     }
 
     // reassign output nodes
-    for id in output_nodes {
+    for id in output_ids {
         mapping.insert(*id, new_id);
         new_id += 1;
     }
@@ -83,10 +83,9 @@ pub fn collapse_ids(
 /// Returns None when neural network is cyclic.
 pub fn toposort(
     buckets: &HashMap<u32, HashMap<u32, f32>>,
-    input_nodes: &HashSet<u32>,
-    output_nodes: &HashSet<u32>,
+    input_ids: &HashSet<u32>,
 ) -> Option<Vec<Vec<u32>>> {
-    let mut cur_layer: Vec<u32> = input_nodes.iter().map(|x| *x).collect();
+    let mut cur_layer: Vec<u32> = input_ids.iter().map(|x| *x).collect();
     let mut layers: Vec<Vec<u32>> = Vec::new();
     let mut past_layers: HashSet<Vec<u32>> = HashSet::new();
 
@@ -126,10 +125,10 @@ pub fn toposort(
 /// Returns None when genome has repeated genes.
 pub fn generate_buckets(
     genome: &Genome,
-    output_nodes: &HashSet<u32>,
+    output_ids: &HashSet<u32>,
 ) -> Option<HashMap<u32, HashMap<u32, f32>>> {
     let mut buckets: HashMap<u32, HashMap<u32, f32>> = HashMap::new(); //in_node, out_node, weight
-    let mut active_nodes: HashSet<u32> = HashSet::new(); //keeps track of nodes we've seen
+    let mut active_nodes: HashSet<u32> = HashSet::new(); //keeps track of nodes we've seen excluding input nodes
 
     // push all active connections to buckets
     for conn in genome.connections.iter().filter(|x| x.enabled) {
@@ -147,11 +146,11 @@ pub fn generate_buckets(
 
     // now remove all nodes that don't own a bucket (we don't want to send values to these)
     let true_nodes: HashSet<u32> = buckets.keys().map(|x| *x).collect(); //all nodes with buckets
-    let bad_nodes: Vec<u32> = active_nodes //all nodes to remove from the buckets
+    let bad_nodes: Vec<u32> = active_nodes //all nodes to remove from the buckets (input nodes cannot appear in buckets)
         .difference(&true_nodes) //keep all nodes with buckets
         .map(|x| *x)
         .collect::<HashSet<u32>>()
-        .difference(&output_nodes) //keep all output nodes
+        .difference(&output_ids) //keep all output nodes
         .map(|x| *x)
         .collect();
     for (inp_id, bucket) in &mut buckets {
