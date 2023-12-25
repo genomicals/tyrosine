@@ -12,7 +12,8 @@ use crate::{genome::Genome, topo::{generate_buckets, toposort, collapse_ids, rem
 pub trait Creature {
     fn from_genome(genome: &Genome, input_size: u32, output_size: u32) -> Option<Self>
         where Self: Sized;
-    fn calculate(input: &[f32]) -> Vec<f32>;
+    fn calculate(&self, input: &[f32]) -> Vec<f32>;
+    fn calculate_gpu(&self, input: &[f32]) -> Option<Vec<f32>>;
 }
 
 
@@ -23,6 +24,7 @@ pub trait Creature {
 
 
 /// Helper struct for A6Creature
+#[derive(Clone)]
 pub struct Arrays {
     mul: Vec<f32>, //connection weight
     src: Vec<u32>, //connection in_node
@@ -37,6 +39,7 @@ pub struct Arrays {
 /// A creature with its neural net represented as a set of six arrays.
 ///
 /// GPU compatible.
+#[derive(Clone)]
 pub struct AtomicCreature {
     pub arrays: Arrays,
 }
@@ -106,8 +109,42 @@ impl Creature for AtomicCreature {
     }
 
 
-    fn calculate(input: &[f32]) -> Vec<f32> {
-        todo!();
+    fn calculate(&self, input: &[f32]) -> Vec<f32> {
+        let mut lookup = self.arrays.lookup.clone();
+        
+        // move input into lookup
+        for i in 0..input.len() {
+            lookup[i] = input[i];
+        }
+
+        // feedforward
+        let mut calc_offset: usize = 0;
+        let mut thread_offset: usize = 0;
+        for i in 0..self.arrays.calc_threads.len() { //iterate for each layer
+
+            // calculate
+            for j in 0..self.arrays.calc_threads[i] as usize { //for each connection in this layer
+                lookup[self.arrays.dest[calc_offset + j] as usize] +=
+                    lookup[self.arrays.src[calc_offset + j] as usize] * //grab the in node's value
+                    self.arrays.mul[calc_offset + j]; //multiply it by the connection's weight
+            }
+
+            // normalize
+            for j in 0..self.arrays.norm_threads[i] as usize { //for each out node in this layer
+                lookup[thread_offset + j] = f32::tanh(lookup[thread_offset + j]);
+            }
+
+            // update offsets
+            calc_offset += self.arrays.calc_threads[i] as usize;
+            thread_offset += self.arrays.norm_threads[i] as usize;
+        }
+
+        lookup
+    }
+
+    
+    fn calculate_gpu(&self, input: &[f32]) -> Option<Vec<f32>> {
+        return None; //TODO for now
     }
 }
 
