@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-//use crate::{genome::Genome, topo::{genome_to_buckets, buckets_to_topo}};
 use crate::{genome::Genome, topo::{generate_buckets, toposort, collapse_ids, remap_data_structures, create_bias_map}};
 
 
