@@ -4,6 +4,16 @@ mod creature;
 mod generation_manager;
 
 
+pub mod errors {
+    /// Centralized error enum for Tyrosine.
+    pub enum TyrosineError {
+        InvalidGenome,
+        EmptyPopulation,
+        CouldntCreateFile,
+    }
+}
+
+
 extern {
     fn verify_cuda() -> u32;
     fn maxmul(a: *const f32, b: *const f32, c: *mut f32, size: i32) -> ();
