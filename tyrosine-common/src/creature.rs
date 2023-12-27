@@ -9,8 +9,9 @@ use crate::{genome::Genome, topo::{generate_buckets, toposort, collapse_ids, rem
 
 /// Generic trait for all creature types
 pub trait Creature {
-    fn from_genome(genome: &Genome, input_size: u32, output_size: u32) -> Option<Self>
+    fn from_genome(genome: Genome, input_size: u32, output_size: u32) -> Option<Self>
         where Self: Sized;
+    fn get_genome(&self) -> &Genome;
     fn calculate(&self, input: &[f32]) -> Vec<f32>;
     fn calculate_gpu(&self, input: &[f32]) -> Option<Vec<f32>>;
 }
@@ -41,10 +42,11 @@ pub struct Arrays {
 #[derive(Clone)]
 pub struct AtomicCreature {
     pub arrays: Arrays,
+    pub genome: Genome,
 }
 impl Creature for AtomicCreature {
     fn from_genome(
-        genome: &Genome,
+        genome: Genome,
         input_size: u32,
         output_size: u32
     ) -> Option<Self> where Self: Sized {
@@ -52,7 +54,7 @@ impl Creature for AtomicCreature {
         let output_ids: HashSet<u32> = HashSet::from_iter(input_size..output_size+input_size);
 
         // retrieve all data required
-        let temp_buckets = generate_buckets(genome, &output_ids)?;
+        let temp_buckets = generate_buckets(&genome, &output_ids)?;
         let temp_topo = toposort(&temp_buckets, &input_ids)?;
         let id_map = collapse_ids(&temp_topo, &output_ids);
         let (buckets, topo) = remap_data_structures(&temp_buckets, &temp_topo, &id_map);
@@ -104,7 +106,13 @@ impl Creature for AtomicCreature {
                 calc_threads,
                 norm_threads,
             },
+            genome: genome,
         })
+    }
+
+
+    fn get_genome(&self) -> &Genome {
+        &self.genome
     }
 
 

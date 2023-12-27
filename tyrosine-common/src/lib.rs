@@ -10,6 +10,10 @@ pub mod errors {
         InvalidGenome,
         EmptyPopulation,
         CouldntCreateFile,
+        CouldntWriteFile,
+        CouldntReadFile,
+        InvalidFileFormat,
+        InvalidGenomeFormat,
     }
 }
 
