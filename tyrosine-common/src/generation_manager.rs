@@ -1,7 +1,5 @@
 use std::{fs::{File, self}, os::unix::fs::FileExt, io::Write};
-
 use rand::rngs::ThreadRng;
-
 use crate::{creature::{Creature, AtomicCreature}, errors::TyrosineError, genome::Genome};
 //use std::{rc::Rc, cell::RefCell};
 
@@ -96,12 +94,6 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
 
 
     fn load_generation(&mut self, file: &str) -> Result<(), TyrosineError> {
-        //let bytes: Vec<u8> = fs::read(file)
-        //    .map_err(|_| TyrosineError::CouldntReadFile)?
-        //    .iter()
-        //    .rev()
-        //    .map(|x| *x)
-        //    .collect();
         let bytes: Vec<u8> = fs::read(file).map_err(|_| TyrosineError::CouldntReadFile)?;
         let splits: Vec<&[u8]> = bytes.split(|x| *x == b'\n').collect();
 
@@ -148,10 +140,6 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
         for i in 1..splits.len() {
             genomes.push(Genome::from_bytes(splits[i]).ok_or(TyrosineError::InvalidGenomeFormat)?);
         }
-        //let genomes: Vec<Genome> = splits[1..splits.len()]
-        //    .iter()
-        //    .map(|x| Genome::from_bytes(x).ok_or(TyrosineError::InvalidGenomeFormat)?)
-        //    .collect();
         let mut new_population = Vec::with_capacity(new_population_size as usize);
         for genome in genomes {
             let creature = T::from_genome(genome, new_input_size, new_output_size) //generic creature trait used

@@ -79,7 +79,6 @@ impl Creature for AtomicCreature {
         // fill in the rest of the 5 arrays
         for i in 0..topo.len() { //keep layers in order when pushing
             let layer = &topo[i];
-            //calc_threads.push(layer.len() as u32);
             if i > 0 { //don't push the input layer size to norm_threads
                 norm_threads.push(layer.len() as u32);
             }

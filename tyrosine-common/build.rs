@@ -2,15 +2,6 @@ use std::env;
 use cc;
 
 fn main() {
-    //LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
-    //env::set_var("LD_LIBRARY_PATH", "$LD_LIBRARY_PATH:$(pwd)");
-    //dbg!("test");
-    //cc::Build::new()
-    //    .cuda(true)
-    //    .shared_flag(true)
-    //    .flag("-allow-unsupported-compiler")
-    //    .file("calculate.cu")
-    //    .compile("libcalculate.so");
     cc::Build::new()
         // Switch to CUDA C++ library compilation using NVCC.
         .cuda(true)
@@ -29,9 +20,8 @@ fn main() {
         .flag("-t0")
         // Less things to worry about with this
         .flag("-allow-unsupported-compiler")
-        .file("calculate.cu")
-        .compile("calculate");
-    //println!("cargo:rustc-link-lib=calculate");
+        .file("forward.cu")
+        .compile("forward");
 }
 
 
