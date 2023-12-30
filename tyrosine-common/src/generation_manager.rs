@@ -19,10 +19,10 @@ pub enum Handling {
 
 /// How to select which creatures contribute to the next generation.
 pub enum Selection {
-    /// Set a hard threshold from 0.1 to 0.9.
-    Threshold(f32),
-    /// Smooth gradient with the center set from 0.1 to 0.9.
-    Gradient(f32),
+    /// Set a hard threshold from 0.1 to 0.9. Preserve rank 1?
+    Threshold(f32, bool),
+    /// Smooth gradient with the center set from 0.1 to 0.9. Preserve rank 1?
+    Gradient(f32, bool),
 }
 
 
@@ -69,7 +69,7 @@ impl<T:Creature+Clone> ContigGenerationManager<T> {
 
             population_size: 500,
             handling: Handling::PersistentCreatures,
-            selection: Selection::Gradient(0.5),
+            selection: Selection::Gradient(0.5, true),
         }
     }
 }
