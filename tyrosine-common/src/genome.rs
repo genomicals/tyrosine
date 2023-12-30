@@ -1,6 +1,8 @@
 use ordered_float::OrderedFloat;
 use rand::{self, rngs::ThreadRng, Rng};
 
+use crate::{bytes_to_unicode_bits, unicode_bits_to_bytes};
+
 
 #[derive(Clone, Debug, Hash)]
 pub struct NodeGene {
@@ -42,9 +44,10 @@ impl Genome {
         // push all new connections
         for i in 0..input_size {
             for j in 0..output_size {
+                //println!("creating connection {} to {} where {}, {}", i, input_size + j, input_size, output_size);
                 connections.push(ConnectionGene {
                     in_node: i,
-                    out_node: j,
+                    out_node: input_size + j,
                     weight: OrderedFloat(rng.gen_range(-5.0..5.0)),
                     enabled: rng.gen_bool(0.5),
                     innov: i * output_size + j, //each innov is unique yet consistent
@@ -56,10 +59,10 @@ impl Genome {
     }
 
 
-    /// Attempts to create a genome from the provided bytes.
+    /// Attempts to create a genome from the provided non human readable bytes.
     ///
     /// Needs to have its innovation numbers filled by an owner struct.
-    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+    pub fn from_bytes_binary(bytes: &[u8]) -> Option<Self> {
         let mut connections = Vec::new();
         let mut offset = 0;
 
@@ -133,10 +136,18 @@ impl Genome {
     }
 
 
-    /// Converts the current genome into bytes.
+    /// Attempts to create a genome from the provided non human readable bytes.
+    ///
+    /// Needs to have its innovation numbers filled by an owner struct.
+    pub fn from_bytes_unicode(bytes: &[u8]) -> Option<Self> {
+        Self::from_bytes_binary(&unicode_bits_to_bytes(bytes)?)
+    }
+
+
+    /// Converts the current genome into non human readable bytes.
     ///
     /// Important for saving a genome.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes_binary(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(
             1 + self.connections.len()*13 + self.nodes.len()*8
         );
@@ -152,6 +163,14 @@ impl Genome {
             bytes.extend_from_slice(&node.id.to_le_bytes());
         }
         bytes
+    }
+
+
+    /// Converts the current genome into human readable bytes.
+    ///
+    /// Important for saving a genome.
+    pub fn as_bytes_unicode(&self) -> Vec<u8> {
+        bytes_to_unicode_bits(&self.as_bytes_binary())
     }
 }
 
@@ -170,7 +189,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid0() {
         let bytes = vec![];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -178,7 +197,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid1() {
         let bytes = vec![0; 1];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -186,7 +205,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid2() {
         let bytes = vec![0; 2];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -194,7 +213,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid3() {
         let bytes = vec![0; 3];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -202,7 +221,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid4() {
         let bytes = vec![0; 4];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -210,7 +229,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid5() {
         let bytes = vec![0; 5];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -218,7 +237,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid6() {
         let bytes = vec![0; 6];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -226,7 +245,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid7() {
         let bytes = vec![0; 7];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -234,7 +253,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid8() {
         let bytes = vec![0; 8];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -242,7 +261,7 @@ mod tests {
     #[test]
     fn from_bytes_invalid9() {
         let bytes = vec![0; 9];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(true),
             Some(_) => assert!(false),
         }
@@ -250,7 +269,7 @@ mod tests {
     #[test]
     fn from_bytes_valid0() {
         let bytes = vec![2];
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(false),
             Some(_) => assert!(true),
         }
@@ -259,7 +278,7 @@ mod tests {
     fn from_bytes_valid1() {
         let mut bytes = vec![0; 9];
         bytes[0] = 2; //delimiter
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(false),
             Some(_) => assert!(true),
         }
@@ -268,7 +287,7 @@ mod tests {
     fn from_bytes_valid2() {
         let mut bytes = vec![0; 22];
         bytes[13] = 2; //delimiter
-        match Genome::from_bytes(&bytes) {
+        match Genome::from_bytes_binary(&bytes) {
             None => assert!(false),
             Some(_) => assert!(true),
         }
@@ -277,14 +296,14 @@ mod tests {
     fn to_from_test0() {
         let mut bytes = vec![0; 22];
         bytes[13] = 2; //delimiter
-        let gen = match Genome::from_bytes(&bytes) {
+        let gen = match Genome::from_bytes_binary(&bytes) {
             None => {
                 assert!(false);
                 return;
             },
             Some(x) => x,
         };
-        let bytes_new = gen.as_bytes();
+        let bytes_new = gen.as_bytes_binary();
         assert_eq!(bytes, bytes_new);
     }
 }

@@ -1,4 +1,6 @@
 use std::collections::{HashMap, HashSet};
+use sorted_vec::SortedSet;
+
 use crate::genome::{Genome, ConnectionGene, NodeGene};
 
 
@@ -84,32 +86,51 @@ pub fn collapse_ids(
 pub fn toposort(
     buckets: &HashMap<u32, HashMap<u32, f32>>,
     input_ids: &HashSet<u32>,
+    output_ids: &HashSet<u32>,
 ) -> Option<Vec<Vec<u32>>> {
-    let mut cur_layer: Vec<u32> = input_ids.iter().map(|x| *x).collect();
+    //let mut cur_layer: SortedSet<u32> = input_ids
+    //    .iter()
+    //    .filter(|x| buckets.contains_key(x)) //remove all unused inputs, ie inputs without buckets
+    //    .map(|x| *x)
+    //    .collect();
+    let mut cur_layer: SortedSet<u32> = SortedSet::from_unsorted(input_ids
+        .iter()
+        .filter(|x| buckets.contains_key(x)) //remove all unused inputs, ie inputs without buckets
+        .map(|x| *x)
+        .collect()
+    );
+    //SortedSet::from_unsorted();
     let mut layers: Vec<Vec<u32>> = Vec::new();
     let mut past_layers: HashSet<Vec<u32>> = HashSet::new();
 
-    let layer_copy = cur_layer.clone();
-    past_layers.insert(layer_copy.clone()); //hash this layer
-    layers.push(layer_copy); //remember this layer
+    //let layer_copy = cur_layer.clone();
+    past_layers.insert(cur_layer.to_vec()); //hash this layer
+    layers.push(cur_layer.to_vec()); //remember this layer
+
+    //println!("input_ids: {:?}", input_ids);
+    //println!("buckets: {:?}", buckets);
 
     // iteratively generate and verify the next layer
     loop {
-        let new_layer: Vec<u32> = cur_layer
+        //println!("layer: {:?}", cur_layer);
+        let new_layer: SortedSet<u32> = SortedSet::from_unsorted(cur_layer
             .iter()
             .flat_map(|x| buckets[x].keys().map(|x| *x).collect::<Vec<u32>>())
-            .collect();
+            .filter(|x| !output_ids.contains(x))
+            .collect()
+        );
 
         if new_layer.len() == 0 { //finish if we've exhausted all layers
             break;
         }
 
         // ensure we haven't seen this before
-        let layer_copy = new_layer.clone();
-        if past_layers.contains(&layer_copy) {
+        //let layer_copy = new_layer.clone();
+        if past_layers.contains(&new_layer.to_vec()) {
+            //println!("RETURNING, saw {:?}", new_layer.to_vec());
             return None; //cyclic, invalid genome
         } else {
-            past_layers.insert(layer_copy);
+            past_layers.insert(new_layer.to_vec());
         }
 
         cur_layer = new_layer;
@@ -129,6 +150,8 @@ pub fn generate_buckets(
 ) -> Option<HashMap<u32, HashMap<u32, f32>>> {
     let mut buckets: HashMap<u32, HashMap<u32, f32>> = HashMap::new(); //in_node, out_node, weight
     let mut active_nodes: HashSet<u32> = HashSet::new(); //keeps track of nodes we've seen excluding input nodes
+
+    //println!("output ids: {:?}", output_ids);
 
     // push all active connections to buckets
     for conn in genome.connections.iter().filter(|x| x.enabled) {

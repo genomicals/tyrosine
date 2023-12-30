@@ -1,5 +1,5 @@
 use std::{fs::{File, self}, os::unix::fs::FileExt, io::Write};
-use rand::rngs::ThreadRng;
+use rand::{rngs::ThreadRng, seq::SliceRandom};
 use crate::{creature::{Creature, AtomicCreature}, errors::TyrosineError, genome::Genome};
 //use std::{rc::Rc, cell::RefCell};
 
@@ -47,7 +47,9 @@ pub struct ContigGenerationManager<T: Creature> {
     pub population: Vec<T>,
     pub input_size: u32,
     pub output_size: u32,
+    pub species_reps: Vec<Genome>,
     pub rng: ThreadRng,
+
 
     pub population_size: u32,
     pub handling: Handling,
@@ -65,6 +67,7 @@ impl<T:Creature+Clone> ContigGenerationManager<T> {
             population: Vec::new(),
             input_size: input_count,
             output_size: output_count,
+            species_reps: Vec::new(),
             rng: rand::thread_rng(),
 
             population_size: 500,
@@ -83,22 +86,32 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
 
     /// Completely reset the generation manager.
     fn fresh_population(&mut self) {
+        // generate new genomes
         let mut new_pop = Vec::with_capacity(self.population_size as usize);
-        for _ in 0..self.population_size {
+        for i in 0..self.population_size {
+            //println!("on {}", i);
             let genome = Genome::new_random(self.input_size, self.output_size, &mut self.rng);
-            new_pop.push(AtomicCreature::from_genome(genome, self.input_size, self.output_size));
+            new_pop.push(T::from_genome(genome, self.input_size, self.output_size).unwrap()); //safe unwrap
         }
-        // CONTINUE TO WRITE THIS, TODO
-        todo!()
+
+        // innovation is already done automatically by the new_random, all genomes share same innovations
+        // one species for now, we'll push a random genome as the representative
+        let rep = new_pop.choose(&mut self.rng).unwrap().get_genome().clone();
+        self.species_reps = vec![rep];
+
+        // update population
+        self.population = new_pop;
     }
 
 
     fn load_generation(&mut self, file: &str) -> Result<(), TyrosineError> {
         let bytes: Vec<u8> = fs::read(file).map_err(|_| TyrosineError::CouldntReadFile)?;
+        println!("checkpoint 1");
         let splits: Vec<&[u8]> = bytes.split(|x| *x == b'\n').collect();
 
         // process config
         let config = *splits.get(0).ok_or(TyrosineError::InvalidFileFormat)?;
+        println!("checkpoint 2");
         if config.len() != 12 { //invalid format
             return Err(TyrosineError::InvalidFileFormat);
         }
@@ -106,6 +119,7 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
         if chunked_config.len() != 3 {
             return Err(TyrosineError::InvalidFileFormat);
         }
+        println!("checkpoint 3");
         let mut buf: [u8; 4] = [0; 4];
         buf[0] = chunked_config[0][0];
         buf[1] = chunked_config[0][1];
@@ -134,18 +148,24 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
 
         // process genomes
         if new_population_size != (splits.len() - 1) as u32 {
+            //println!("new_population_size: {}", new_population_size);
+            //println!("splits len: {}", splits.len());
             return Err(TyrosineError::InvalidFileFormat);
         }
+        //println!("checkpoint 4");
         let mut genomes = Vec::with_capacity(new_population_size as usize);
         for i in 1..splits.len() {
-            genomes.push(Genome::from_bytes(splits[i]).ok_or(TyrosineError::InvalidGenomeFormat)?);
+            //println!("on split {}", i);
+            genomes.push(Genome::from_bytes_unicode(splits[i]).ok_or(TyrosineError::InvalidGenomeFormat)?);
         }
+        //println!("checkpoint 5");
         let mut new_population = Vec::with_capacity(new_population_size as usize);
         for genome in genomes {
             let creature = T::from_genome(genome, new_input_size, new_output_size) //generic creature trait used
                 .ok_or(TyrosineError::InvalidGenome)?;
             new_population.push(creature);
         }
+        //println!("checkpoint 6");
 
         // save to self
         self.input_size = new_input_size;
@@ -157,7 +177,7 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
     }
 
 
-    fn save_generation(&self, file: &str, rankings: &[u32]) -> Result<(), TyrosineError> {
+    fn save_generation(&self, file: &str, fitnesses: &[u32]) -> Result<(), TyrosineError> {
         // TODO CREATE A RANKING FUNCTION AND CALL IT IN THIS FUNCTION
         let mut file = File::create(file).map_err(|_| TyrosineError::CouldntCreateFile)?;
         let mut buf = Vec::new();
@@ -166,7 +186,7 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
         buf.extend(self.population_size.to_le_bytes());
         for i in 0..self.population_size as usize {
             buf.push(b'\n');
-            buf.extend(&self.population[i].get_genome().as_bytes()); //push this genome
+            buf.extend(&self.population[i].get_genome().as_bytes_unicode()); //push this genome
         }
         file.write_all(&buf).map_err(|_| TyrosineError::CouldntWriteFile)?;
         Ok(())
@@ -178,7 +198,7 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
     }
 
 
-    fn evolve(&mut self, rankings: &[u32]) -> Result<(), TyrosineError> {
+    fn evolve(&mut self, fitnesses: &[u32]) -> Result<(), TyrosineError> {
         return Ok(()); //TODO temporary
     }
 
@@ -215,24 +235,37 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
 #[cfg(test)]
 mod tests {
     use std::env::temp_dir;
-
-    use rand::thread_rng;
-
     use super::*;
 
     #[test]
     fn random_save_load() {
         let dir = temp_dir();
         let mut gen_man: ContigGenerationManager<AtomicCreature> = ContigGenerationManager::new(42, 7);
-        gen_man.configure(250, Handling::UniqueCreatures, Selection::Gradient(0.5));
+        gen_man.configure(100, Handling::UniqueCreatures, Selection::Gradient(0.5, true));
         gen_man.fresh_population();
 
+        let filename1 = String::from(dir.to_str().unwrap()) + "/first.gen";
+        let filename2 = String::from(dir.to_str().unwrap()) + "/second.gen";
+
         let ranks: Vec<u32> = (0..250).collect();
-        match gen_man.save_generation(&(String::from(dir.to_str().unwrap()) + "/first.gen"), &ranks) {
+        match gen_man.save_generation(&filename1, &ranks) {
             Err(_) => assert!(false),
             Ok(_) => {},
         }
-        assert!(true);
+        match gen_man.load_generation(&filename1) {
+            Err(_) => assert!(false),
+            Ok(_) => {},
+        }
+        match gen_man.save_generation(&filename2, &ranks) {
+            Err(_) => assert!(false),
+            Ok(_) => {},
+        }
+        let bytes1: Vec<u8> = fs::read(&filename1).unwrap();
+        let bytes2: Vec<u8> = fs::read(&filename2).unwrap();
+
+        //println!("first:\n{:?}", bytes1);
+        //println!("second:\n{:?}", bytes2);
+        assert_eq!(bytes1, bytes2);
     }
 }
 

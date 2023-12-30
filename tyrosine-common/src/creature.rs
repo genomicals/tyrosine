@@ -55,7 +55,9 @@ impl Creature for AtomicCreature {
 
         // retrieve all data required
         let temp_buckets = generate_buckets(&genome, &output_ids)?;
-        let temp_topo = toposort(&temp_buckets, &input_ids)?;
+        //println!("before topo");
+        let temp_topo = toposort(&temp_buckets, &input_ids, &output_ids)?;
+        //println!("done topo");
         let id_map = collapse_ids(&temp_topo, &output_ids);
         let (buckets, topo) = remap_data_structures(&temp_buckets, &temp_topo, &id_map);
         let bias_map = create_bias_map(&genome, &id_map);
