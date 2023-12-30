@@ -207,3 +207,33 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
 
 
 
+/* =====================
+        TESTING
+===================== */
+
+
+#[cfg(test)]
+mod tests {
+    use std::env::temp_dir;
+
+    use rand::thread_rng;
+
+    use super::*;
+
+    #[test]
+    fn random_save_load() {
+        let dir = temp_dir();
+        let mut gen_man: ContigGenerationManager<AtomicCreature> = ContigGenerationManager::new(42, 7);
+        gen_man.configure(250, Handling::UniqueCreatures, Selection::Gradient(0.5));
+        gen_man.fresh_population();
+
+        let ranks: Vec<u32> = (0..250).collect();
+        match gen_man.save_generation(&(String::from(dir.to_str().unwrap()) + "/first.gen"), &ranks) {
+            Err(_) => assert!(false),
+            Ok(_) => {},
+        }
+        assert!(true);
+    }
+}
+
+
