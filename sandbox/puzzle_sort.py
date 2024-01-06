@@ -25,7 +25,8 @@ class Word:
 
     def __repr__(self) -> str:
         #return "Word()"
-        return f"\n<WORD {self.name},\n\tLEFT: {self.left.__str__()},\n\tRIGHT: {self.right.__str__()}>\n\tLEFT_LABELS: {self.left_labels}\n\tRIGHT_LABELS: {self.right_labels}\n" 
+        #return f"\n<WORD {self.name},\n\tLEFT: {self.left.__str__()},\n\tRIGHT: {self.right.__str__()}>\n\tLEFT_LABELS: {self.left_labels}\n\tRIGHT_LABELS: {self.right_labels}\n" 
+        return f"\n<WORD {self.name},\n\tLEFT: {self.left.__str__()},\n\tRIGHT: {self.right.__str__()}>\n" 
 
     #def __str__(self) -> str:
         #return self.left.__str__() + self.right.__str__()
@@ -127,6 +128,66 @@ for right in left_edge:
 #print(left_edge)
 #print(right_edge)
 print(all_words)
+
+
+
+def build0(all_words: dict[str, Word]) -> list[str]:
+    def helper(rest: set[str], frontier: set[str], all_words: dict[str, Word]) -> str | None:
+        if len(frontier) > 0:
+            ret = frontier.__iter__().__next__() #pick from frontier
+            #if ret in rest:
+            #    rest.remove(ret)
+            rest.remove(ret)
+            return ret
+        if len(rest) > 0:
+            ret = rest.__iter__().__next__() #pick from rest, fill frontier
+            rest.remove(ret)
+            #frontier.union(all_words[ret].right)
+            frontier.update(filter(lambda x: x in ret, all_words[ret].right))
+            return ret
+        return None
+
+
+
+    rest = set(all_words.keys())
+    frontier = set()
+    collection = [] #need to come up with a better data structure than a list that optimizes middle pushes
+
+    ## first find a left-most candidate
+    #cur = None
+    #for key in keys:
+    #    if len(all_words[key].left) == 0:
+    #        cur = key
+    #        break
+    #if cur == None:
+    #    return []
+    
+    for _ in range(len(rest)): #just need a limiter on how many rounds to run
+        word = helper(rest, frontier, all_words)
+        if word == None:
+            break
+
+        boundaries = all_words[word].left
+        indices = list(map(lambda x: collection.index(x) if x in collection else 0, boundaries))
+        index = max(indices) if len(indices) > 0 else 0
+        collection.insert(index + 1, word)
+
+
+    #for key in keys:
+    #    min_ind =         
+
+    return collection
+
+
+print(f"first method (faulty): {build0(all_words)}")
+
+
+
+
+
+
+
+
 
 
 
