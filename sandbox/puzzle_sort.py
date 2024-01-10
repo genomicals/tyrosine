@@ -1,5 +1,5 @@
 
-things = [
+subsequences = [
     ["queso", "papel", "gato"],
     ["refri", "arbol", "silla"],
     ["mesa", "papel", "sopa"],
@@ -7,9 +7,11 @@ things = [
     ["papel", "arbol", "silla", "perro"],
 ]
 
-print(things)
+print(subsequences)
 
 class Word:
+    """Stores a word's dependencies and other info."""
+
     name: str
     visited: bool
     left: set[str]
@@ -32,14 +34,15 @@ class Word:
 
 all_words: dict[str, Word] = dict()
 
-for thing in things:
-    for i in range(len(thing)):
-        if thing[i] not in all_words:
-            all_words[thing[i]] = Word(thing[i])
-        if i != 0:
-            all_words[thing[i]].left.add(thing[i-1])
-        if i != len(thing)-1:
-            all_words[thing[i]].right.add(thing[i+1])
+# create a Word object for each word and build its dependencies
+for subseq in subsequences:
+    for i in range(len(subseq)):
+        if subseq[i] not in all_words: #check if we haven't created this Word yet
+            all_words[subseq[i]] = Word(subseq[i])
+        if i != 0: #only push left dependency if we aren't on left edge
+            all_words[subseq[i]].left.add(subseq[i-1])
+        if i != len(subseq)-1: #only push right dependency if we aren't on right edge
+            all_words[subseq[i]].right.add(subseq[i+1])
 
 print(all_words)
 
