@@ -36,18 +36,21 @@ all_words: dict[str, Word] = dict()
 
 # create a Word object for each word and build its dependencies
 for subseq in subsequences:
+    # iterate through all words in this subsequence
     for i in range(len(subseq)):
-        if subseq[i] not in all_words: #check if we haven't created this Word yet
+        if subseq[i] not in all_words: # check if we haven't created this Word yet
             all_words[subseq[i]] = Word(subseq[i])
-        if i != 0: #only push left dependency if we aren't on left edge
+        if i != 0: # only push left dependency if we aren't on left edge
             all_words[subseq[i]].left.add(subseq[i-1])
-        if i != len(subseq)-1: #only push right dependency if we aren't on right edge
+        if i != len(subseq)-1: # only push right dependency if we aren't on right edge
             all_words[subseq[i]].right.add(subseq[i+1])
 
 print(all_words)
 
 
 def build(all_words: dict[str, Word]) -> None | list[str]:
+    # Kahn's Algorithm for topological sort
+
     stack = [] # Stack of words with their left words all visited (or with no left words)
 
     # Put all words with no left words into the stack
@@ -64,7 +67,6 @@ def build(all_words: dict[str, Word]) -> None | list[str]:
 
     result = []
 
-    # Kahn's Algorithm for topological sort
     while stack:
         cur = stack.pop()
         word = all_words[cur]
@@ -74,13 +76,15 @@ def build(all_words: dict[str, Word]) -> None | list[str]:
         result.append(cur)
         word.visited = True
         
-        for other in all_words.values():
+        # We do not need to search the entire list of words
+        # For any word w, the right contains every word that has w to its left
+        for right_name in word.right:
             # Remove current word from the left of all other words if it exists
-            other.left.discard(cur)
+            all_words[right_name].left.discard(cur)
 
             # Add to stack if no more left words
-            if not other.left:
-                stack.append(other.name)
+            if not all_words[right_name].left:
+                stack.append(right_name)
 
     # If any word has a non-empty left set, a word has been visited without its left being fully visited
     for word in all_words.values():
@@ -90,11 +94,11 @@ def build(all_words: dict[str, Word]) -> None | list[str]:
         
     return result
 
-print(build0(all_words))
+print(build(all_words))
 
 # Trivial test for cyclic dependencies
 a = Word("a")
 a.left.add("a")
 test1 = dict()
 test1["a"] = a
-print(build0(test1))
+print(build(test1))
