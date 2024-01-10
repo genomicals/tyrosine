@@ -44,7 +44,7 @@ for thing in things:
 print(all_words)
 
 
-def build0(all_words: dict[str, Word]) -> None | list[str]:
+def build(all_words: dict[str, Word]) -> None | list[str]:
     stack = [] # Stack of words with their left words all visited (or with no left words)
 
     # Put all words with no left words into the stack
@@ -61,7 +61,7 @@ def build0(all_words: dict[str, Word]) -> None | list[str]:
 
     result = []
 
-    # Khan's Algorithm for topological sort
+    # Kahn's Algorithm for topological sort
     while stack:
         cur = stack.pop()
         word = all_words[cur]
