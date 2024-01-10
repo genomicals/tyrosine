@@ -70,7 +70,8 @@ def build(all_words: dict[str, Word]) -> None | list[str]:
     while stack:
         cur = stack.pop()
         word = all_words[cur]
-        if word.visited: # If word is already in results, skip it
+        if word.visited: 
+            # If word is already in results, skip it
             continue
     
         result.append(cur)
