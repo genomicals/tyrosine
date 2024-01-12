@@ -70,3 +70,16 @@ bound mostly, no GPU. Mostly just for verifiying that other algorithm works and
 for a benchmark comparison.
 
 
+
+
+Algorithm: Kahn's Algorithm for topological sort
+
+Kahn's algorithm works by picking vertices with all their dependencies 
+resolved after every iteration. We start with a list of vertices L with no 
+dependencies. For every item in L, we remove it as a dependency from all other 
+vertices, add it to our result list and mark it as visited. We also we add all 
+vertices not visited with no more dependencies into list L for each item. This 
+is repeated until list L is exhausted. 
+
+In the case where a topological ordering cannot be found, not all vertices will 
+be visited due to there existing some dependency cycle.
