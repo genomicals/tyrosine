@@ -1,6 +1,6 @@
-use std::{fs::{File, self}, os::unix::fs::FileExt, io::Write};
+use std::{fs::{File, self}, os::unix::fs::FileExt, io::Write, collections::{HashMap, HashSet, btree_map::{OccupiedEntry, VacantEntry}}, hash::Hash, borrow::{BorrowMut, Borrow}};
 use rand::{rngs::ThreadRng, seq::SliceRandom};
-use crate::{creature::{Creature, AtomicCreature}, errors::TyrosineError, genome::Genome};
+use crate::{creature::{Creature, AtomicCreature}, errors::TyrosineError, genome::{Genome, ConnectionGene}};
 //use std::{rc::Rc, cell::RefCell};
 
 
@@ -34,6 +34,7 @@ pub trait GenerationManager<T:Creature+Clone> {
     fn save_generation(&self, file: &str, rankings: &[u32]) -> Result<(), TyrosineError>;
     fn get_population(&self) -> Vec<T>;
     fn evolve(&mut self, rankings: &[u32]) -> Result<(), TyrosineError>;
+    fn label_genes(&mut self, genomes: &mut Vec<Genome>) -> Result<(), TyrosineError>;
 }
 
 
@@ -41,6 +42,19 @@ pub trait GenerationManager<T:Creature+Clone> {
         STRUCTS
 ===================== */
 
+/// A set of genes with its dependencies listed
+struct GeneSet {
+    // gene_id: (u32, u32), // Gene ID of a gene is the tuple (i, o), where i is 
+    //                      // the in_node of a gene and o is the out_node.
+    similar_genes: HashSet<(usize, usize)>, // Genes in similar_genes are idenfied by (i, j),
+                                            // where the ConnectionGene can be referenced with 
+                                            // genomes[i].connections[j], where genomes is a
+                                            // Vec<Genome>. All genes in this set have the same
+                                            // gene ID.
+    left_ids: HashSet<(u32, u32)>, // Set of gene IDs to the left of this gene ID.
+    right_ids: HashSet<(u32, u32)>, // Set of gene IDs to the right of this gene ID.
+    visited: bool, // Whether this gene set has been visited/labelled with innov IDs.
+}
 
 /// A generation manager with contiguous creatures
 pub struct ContigGenerationManager<T: Creature> {
@@ -158,7 +172,11 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
             //println!("on split {}", i);
             genomes.push(Genome::from_bytes_unicode(splits[i]).ok_or(TyrosineError::InvalidGenomeFormat)?);
         }
+
         //println!("checkpoint 5");
+        self.label_genes(&mut genomes)?;
+
+        //println!("checkpoint 5.1");
         let mut new_population = Vec::with_capacity(new_population_size as usize);
         for genome in genomes {
             let creature = T::from_genome(genome, new_input_size, new_output_size) //generic creature trait used
@@ -199,7 +217,105 @@ impl<T:Creature+Clone> GenerationManager<T> for ContigGenerationManager<T> {
 
 
     fn evolve(&mut self, fitnesses: &[u32]) -> Result<(), TyrosineError> {
-        return Ok(()); //TODO temporary
+        Ok(()) //TODO temporary
+    }
+
+    fn label_genes(&mut self, genomes: &mut Vec<Genome>) -> Result<(), TyrosineError> {
+        let mut genes: HashMap<(u32, u32), GeneSet> = HashMap::new();
+        
+        // Create mappings for each set of same genes, the left dependencies of a set of same genes,
+        // and the right dependencies of the set of same genes.
+        for i in 0..genomes.len() {
+            let genome = &genomes[i];
+
+            // Iterate through all genes in this genome
+            for j in 0..genome.connections.len() { 
+                let cur_gene = (genome.connections[j].in_node, genome.connections[j].out_node);
+
+                // Group genes into gene sets based on their in and out nodes
+                let cur_gene_set = genes.entry(cur_gene).or_insert(GeneSet {
+                    // gene_id: cur_gene, 
+                    similar_genes: HashSet::new(), 
+                    left_ids: HashSet::new(), 
+                    right_ids: HashSet::new(),
+                    visited: false,
+                });
+                
+                cur_gene_set.similar_genes.insert((i, j));
+
+                // Push left dependency if we aren't on left edge
+                if j != 0 {
+                    cur_gene_set.left_ids.insert(genome.connections[j-1].get_id());
+                }
+
+                // Push right dependency if we aren't on left edge
+                if j != genome.connections.len()-1 {
+                    cur_gene_set.right_ids.insert(genome.connections[j+1].get_id());
+                }
+            }
+        }
+
+        // Kahn's Algorithm for topological sort
+        let mut stack = Vec::new(); // Stack of genes with all left dependencies resolved
+
+        // Put all gene ids with no left dependencies into the stack
+        for (id, gene_set) in &genes {
+            let mut has_left = false;
+            for left_id in &gene_set.left_ids {
+                if !genes.get(left_id).unwrap().visited { // Safe unwrap, all left_ids are in genes HashMap.
+                    has_left = true;
+                }
+            }
+            if !has_left {
+                stack.push(id.clone());
+            }
+        }
+
+        let mut cur_innov = 0;
+        while !stack.is_empty() {
+            let cur_id = stack.pop().unwrap(); // Since stack is not empty, we can unwrap.
+            let mut gene_set = genes.get_mut(&cur_id).unwrap(); // Safe unwrap, all items in the stack 
+                                                                              // are present in genes HashMap.
+            
+            // If the gene set is labelled, skip it.
+            if gene_set.visited {
+                continue;
+            }
+
+            // Label all genes in the gene set.
+            for (i, j) in &gene_set.similar_genes {
+                genomes[*i].connections[*j].innov = cur_innov;
+            }
+            gene_set.visited = true;
+
+            let right_ids = genes.get(&cur_id).unwrap().right_ids.clone(); 
+
+            // We do not need to search the entire genes HashMap, since for any GeneSet s, 
+            // s.right_ids contain every id that has s.gene_id to its left.
+            for right_id in right_ids {
+                let right_geneset = genes.get_mut(&right_id).unwrap();
+
+                // Remove current gene id from the left of all gene sets to the right of it.
+                right_geneset.left_ids.remove(&cur_id);
+
+                // Add to stack if the current right gene set has no more gene sets to the left of it.
+                if right_geneset.left_ids.is_empty() {
+                    stack.push(right_id);
+                }
+            }
+
+            cur_innov += 1;
+        }
+
+        // If there is a gene set that has not been visited, there exists a gene set cycle and
+        // the genome list cannot be ordered innov ids appropriately.
+        for gene_set in genes.values() {
+            if !gene_set.visited {
+                return Err(TyrosineError::InvalidGenomeFormat);
+            }
+        }
+
+        Ok(())
     }
 
 }

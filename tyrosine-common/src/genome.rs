@@ -19,6 +19,12 @@ pub struct ConnectionGene {
     pub enabled: bool,
     pub innov: u32,
 }
+impl ConnectionGene {
+    /// Gets the ID of the ConnectionGene, represented by (in_node, out_node).
+    pub fn get_id(&self) -> (u32, u32) {
+        (self.in_node, self.out_node)
+    }
+}
 
 
 #[derive(Clone, Debug, Hash)]
