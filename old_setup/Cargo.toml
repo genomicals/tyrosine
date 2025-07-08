@@ -1,9 +1,0 @@
-[workspace]
-
-members = [
-    "tyrosine-common",
-    "tyrosine",
-    "tyrosine-py",
-]
-resolver = "1"
-
