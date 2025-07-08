@@ -3,8 +3,7 @@
 Mascot by [@Nauxe](https://github.com/nauxe)
 
 ## Overview
-NEAT machine learning library for Rust. Currently, tyrosine is being developed
-as a standalone project, but will be converted into a library once finished.
+NEAT machine learning library for Rust.
 
 NeuroEvolution of Augmenting Topologies (NEAT) is a genetic algorithm which
 evolves a population of neural networks. NEAT aims to find an optimal set of
@@ -16,7 +15,7 @@ Link to original paper (here)[https://nn.cs.utexas.edu/downloads/papers/stanley.
 There are several instances where specific features are up to the implementer's choice.
 Here are some choices we made:
 - A bias node is included in the inputs
-- No recurrent nodes are allowed
+- Cyclic connections will be disallowed
 
 ## Trivia
 Tyrosine is an amino acid. The word comes from the Greek "tyros", which means
