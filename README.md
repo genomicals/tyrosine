@@ -9,7 +9,7 @@ NeuroEvolution of Augmenting Topologies (NEAT) is a genetic algorithm which
 evolves a population of neural networks. NEAT aims to find an optimal set of
 weights in addition to an optimal neural network structure.
 
-Link to original paper (here)[https://nn.cs.utexas.edu/downloads/papers/stanley.cec02.pdf].
+Link to original paper ![here](https://nn.cs.utexas.edu/downloads/papers/stanley.cec02.pdf).
 
 ## Implementation Specifics
 There are several instances where specific features are up to the implementer's choice.
