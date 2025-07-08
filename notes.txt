@@ -1,0 +1,7 @@
+In the future, consider bringing back the pyo3 bindings and the separation
+between tyrosine and tyrosine-common. For now, simply have tyrosine as the
+project and only target Rust until it reaches a stable state.
+
+
+
+

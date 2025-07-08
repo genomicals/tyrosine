@@ -3,9 +3,8 @@
 Mascot by [@Nauxe](https://github.com/nauxe)
 
 ## Overview
-NEAT machine learning library for Rust and Python. Tyrosine is implemented
-using Rust and CUDA (for hardware acceleration). For Python bindings, PyO3 is
-used.
+NEAT machine learning library for Rust. Currently, tyrosine is being developed
+as a standalone project, but will be converted into a library once finished.
 
 NeuroEvolution of Augmenting Topologies (NEAT) is a genetic algorithm which
 evolves a population of neural networks. NEAT aims to find an optimal set of
