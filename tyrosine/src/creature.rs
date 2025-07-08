@@ -58,6 +58,7 @@ impl Genome {
         // ensure cyclic systems are... handled or maybe keep them from existing below
         // idk how we're gonna do this function, hopefully we don't modify the structs
         // maybe we don't do a forward here, and handle that in the population manager?
+        // honestly if we detect a cycle here, lets just return a None or error or something
         todo!()
     }
 
