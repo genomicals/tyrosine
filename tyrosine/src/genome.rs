@@ -6,7 +6,7 @@ use rand_distr::{Distribution, Normal};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GlobalInnovator {
-    pub innov: u32,
+    pub innov: usize,
 }
 impl GlobalInnovator {
     pub fn new() -> Self {
@@ -14,7 +14,7 @@ impl GlobalInnovator {
     }
 
     /// Get the next innov number and increment internally
-    pub fn next(&mut self) -> u32 {
+    pub fn next(&mut self) -> usize {
         let innov = self.innov;
         self.innov += 1;
         innov
@@ -25,23 +25,22 @@ impl GlobalInnovator {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NodeGene {
-    pub id: u32,
-    //pub bias: f32, //remember to implemment this as an extra input node instead
+    pub id: usize,
 }
 
 
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConnectionGene {
-    pub in_node: u32,
-    pub out_node: u32,
+    pub in_node: usize,
+    pub out_node: usize,
     pub weight: f64,
     pub enabled: bool,
-    pub innov: u32,
+    pub innov: usize,
 }
 impl ConnectionGene {
     /// Returns the IDs of the surrounding nodes, might be unnecessary
-    pub fn get_id(&self) -> (u32, u32) {
+    pub fn get_id(&self) -> (usize, usize) {
         (self.in_node, self.out_node)
     }
 }
@@ -50,8 +49,8 @@ impl ConnectionGene {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Genome {
-    pub num_inputs: u32, //excludes bias input
-    pub num_outputs: u32,
+    pub num_inputs: usize,
+    pub num_outputs: usize,
     pub node_genes: Vec<NodeGene>,
     pub connection_genes: Vec<ConnectionGene>,
 }
@@ -63,8 +62,24 @@ const PERTUBATION_STD: f64 = 0.1;
 const REPLACEMENT_RANGE: f64 = 5.0;
 const TOGGLE_MUTATION_RATE: f64 = 0.01;
 impl Genome {
+    /// Create a new genome with the specified number of inputs and outputs
+    pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
+
+        let node_genes = (0..(num_inputs + 1 + num_outputs)).into_iter()
+            .map(|i| NodeGene { id: i})
+            .collect();
+
+        Genome {
+            num_inputs: num_inputs + 1,
+            num_outputs,
+            node_genes,
+            connection_genes: Vec::new(),
+        }
+    }
+
+
     /// TODO
-    /// Generate a child from two parent genomes, no mutations applied.
+    /// Generate a child from two parent genomes, no mutations applied
     pub fn crossover(parent0: &Genome, parent1: &Genome) -> Genome {
         todo!()
     }
@@ -174,7 +189,7 @@ impl Genome {
         }
 
         // find existing connections (nondirectional)
-        let connected: Vec<(u32, u32)> = self.connection_genes.iter()
+        let connected: Vec<(usize, usize)> = self.connection_genes.iter()
             .map(|c|
                 if c.in_node < c.out_node {
                     (c.in_node, c.out_node)

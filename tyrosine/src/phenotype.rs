@@ -1,18 +1,17 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use crate::genome::Genome;
+use crate::genome::{ConnectionGene, Genome};
 
 
 
 pub struct Phenotype {
     pub genome: Genome,
-    pub toposorted_nodes: Vec<u32>, //ids
+    pub toposorted_nodes: Vec<usize>, //ids
 }
 impl Phenotype {
-    /// TODO
     /// Generates a Phenotype from Genome and checks if it's a valid genome
     pub fn from_genome(genome: Genome) -> Option<Phenotype> {
-        let mut graph: HashMap<u32, Vec<u32>> = HashMap::new(); //maps dependencies to their output
-        let mut in_degree: HashMap<u32, usize> = HashMap::new(); //incoming degree of each node
+        let mut graph: HashMap<usize, Vec<usize>> = HashMap::new(); //maps dependencies to their output
+        let mut in_degree: HashMap<usize, usize> = HashMap::new(); //incoming degree of each node
 
         // initialize, necessary so that all nodes, reachable or not, are captured, including inputs
         for node in &genome.node_genes {
@@ -26,7 +25,7 @@ impl Phenotype {
         }
 
         // find our starting places
-        let mut frontier: VecDeque<u32> = in_degree.iter()
+        let mut frontier: VecDeque<usize> = in_degree.iter()
             .filter(|(_, deg)| **deg == 0)
             .map(|(&id, _)| id)
             .collect();
@@ -55,6 +54,57 @@ impl Phenotype {
             genome,
             toposorted_nodes: sorted,
         })
+    }
+
+
+    /// Pass input through the neural network and generate an output
+    pub fn activate(&self, inputs: &[f64]) -> Vec<f64> {
+        // one of the network inputs is the bias, ensure the number of inputs lines up
+        assert_eq!(inputs.len() + 1, self.genome.num_inputs, "Number of inputs ({}) didn't match expected amount ({}).", inputs.len(), self.genome.num_inputs - 1);
+
+        // note, entries only exist once the value is calculated, otherwise it will be missing here
+        let mut node_values: HashMap<usize, f64> = HashMap::new();
+
+        // initialize input values
+        node_values.insert(0, 1.0); //bias node
+        for i in 1..self.genome.num_inputs {
+            node_values.insert(i, inputs[i]);
+        }
+
+        // incoming connections references for each node id
+        let incoming = self.genome.connection_genes.iter()
+            .filter(|conn| conn.enabled)
+            .fold(HashMap::<usize, Vec<&ConnectionGene>>::new(), |mut acc, conn| {
+                acc.entry(conn.out_node).or_default().push(conn);
+                acc
+            });
+
+        // evaluate nodes in topological order
+        // NOTE this can be optimized by pre-collecting the weights as such:
+        //     HashMap<usize, Vec<(usize, f64)>> // out_node → [(in_node, weight)]
+        // but if performance is fine then don't bother
+        for &node_id in &self.toposorted_nodes {
+            if node_values.contains_key(&node_id) {
+                continue; //node value already initialized, i do wonder if this is an error
+            }
+
+            let sum: f64 = incoming.get(&node_id)
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|conn| node_values.get(&conn.in_node).unwrap_or(&0.0) * conn.weight)
+                .sum();
+
+            node_values.insert(node_id, sum.tanh());
+        }
+
+        let output_start = self.genome.num_inputs; //outputs start right after the inputs
+        let output_end = output_start + self.genome.num_outputs;
+
+        let outputs = self.genome.node_genes[output_start..output_end].iter()
+            .map(|n| *node_values.get(&n.id).unwrap_or(&0.0))
+            .collect::<Vec<f64>>();
+
+        outputs
     }
 }
 
