@@ -1,5 +1,5 @@
-mod creature;
-mod population_manager;
+pub mod creature;
+pub mod population_manager;
 
 
 

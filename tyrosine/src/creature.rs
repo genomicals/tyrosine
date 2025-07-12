@@ -1,5 +1,6 @@
-use rand::seq::{IndexedMutRandom, IndexedRandom};
+use rand::{seq::{IndexedMutRandom, IndexedRandom}, Rng};
 use serde::{Serialize, Deserialize};
+use rand_distr::{Distribution, Normal};
 
 
 
@@ -21,6 +22,7 @@ impl GlobalInnovator {
 }
 
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NodeGene {
     pub id: u32,
@@ -28,11 +30,12 @@ pub struct NodeGene {
 }
 
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConnectionGene {
     pub in_node: u32,
     pub out_node: u32,
-    pub weight: f32,
+    pub weight: f64,
     pub enabled: bool,
     pub innov: u32,
 }
@@ -44,34 +47,76 @@ impl ConnectionGene {
 }
 
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Genome {
-    pub num_inputs: u32,
+    pub num_inputs: u32, //excludes bias input
     pub num_outputs: u32,
     pub node_genes: Vec<NodeGene>,
     pub connection_genes: Vec<ConnectionGene>,
 }
+const CONNECTION_MUTATION_RATE: f64 = 0.15;
+const NODE_MUTATION_RATE: f64 = 0.03; //should be the least common mutation type
+const WEIGHT_MUTATION_RATE: f64 = 0.8;
+const PERTUBATION_CHANCE: f64 = 0.9; //(1-pertubation_chance) is the chance of total replacement vs just a nudge
+const PERTUBATION_STD: f64 = 0.1;
+const REPLACEMENT_RANGE: f64 = 5.0;
+const TOGGLE_MUTATION_RATE: f64 = 0.01;
 impl Genome {
 
-    /// Run the input through the neural network
-    pub fn forward(&self, input: &[u32]) -> Vec<u32> {
-        // ensure cyclic systems are... handled or maybe keep them from existing below
-        // idk how we're gonna do this function, hopefully we don't modify the structs
-        // maybe we don't do a forward here, and handle that in the population manager?
-        // honestly if we detect a cycle here, lets just return a None or error or something
-        todo!()
-    }
+    ///// Run the input through the neural network
+    //pub fn forward(&self, input: &[u32]) -> Vec<u32> {
+    //    // ensure cyclic systems are... handled or maybe keep them from existing below
+    //    // idk how we're gonna do this function, hopefully we don't modify the structs
+    //    // maybe we don't do a forward here, and handle that in the population manager?
+    //    // honestly if we detect a cycle here, lets just return a None or error or something
+    //    todo!()
+    //}
 
 
     /// Master mutate function, calls the other mutate functions
-    pub fn mutate(&mut self) {
+    /// NOTE: no guarantee that the genome produced is valid
+    pub fn mutate(&mut self, innovator: &mut GlobalInnovator) {
+        let mut rng = rand::rng();
+
+        self.mutate_weights_and_toggle();
+
+        if rng.random::<f64>() < CONNECTION_MUTATION_RATE {
+            self.add_connection(innovator);
+        }
+
+        if rng.random::<f64>() < NODE_MUTATION_RATE {
+            self.add_node(innovator);
+        }
+
         todo!()
     }
 
 
     /// Apply mutations to internal weights
-    pub fn mutate_weights(&mut self) {
-        todo!()
+    pub fn mutate_weights_and_toggle(&mut self) {
+        let mut rng = rand::rng();
+        let normal = Normal::new(0.0, PERTUBATION_STD).unwrap(); //probably safe unwrap
+
+        for connection in &mut self.connection_genes {
+            if rng.random::<f64>() < TOGGLE_MUTATION_RATE {
+                connection.enabled = !connection.enabled;
+            }
+
+            if rng.random::<f64>() > WEIGHT_MUTATION_RATE { //small chance we don't mutate
+                continue;
+            }
+
+            if rng.random::<f64>() < PERTUBATION_CHANCE {
+                // pertubate the weight
+                let pertub_amount = normal.sample(&mut rng);
+                connection.weight += pertub_amount;
+            } else {
+                // replace the weight
+                let new_weight = rng.random_range(-REPLACEMENT_RANGE..REPLACEMENT_RANGE);
+                connection.weight = new_weight;
+            }
+        }
     }
 
 
