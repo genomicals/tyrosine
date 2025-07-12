@@ -73,6 +73,10 @@ impl Genome {
     //    todo!()
     //}
 
+    pub fn reproduce_with(&self, partner: &Genome) -> Genome {
+        todo!()
+    }
+
 
     /// Master mutate function, calls the other mutate functions
     /// NOTE: no guarantee that the genome produced is valid
@@ -88,8 +92,6 @@ impl Genome {
         if rng.random::<f64>() < NODE_MUTATION_RATE {
             self.add_node(innovator);
         }
-
-        todo!()
     }
 
 
@@ -162,6 +164,10 @@ impl Genome {
         // push to genome
         self.connection_genes.push(connection_0);
         self.connection_genes.push(connection_1);
+
+        // sort the connection genes by innov number and the nodes by id
+        self.connection_genes.sort_by_key(|c| c.innov);
+        self.node_genes.sort_by_key(|n| n.id);
     }
 
 
@@ -228,6 +234,9 @@ impl Genome {
             enabled: true,
             innov: innovator.next(),
         });
+
+        // sort the connection genes by innov number
+        self.connection_genes.sort_by_key(|c| c.innov);
     }
 }
 
