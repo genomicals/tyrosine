@@ -63,23 +63,15 @@ const PERTUBATION_STD: f64 = 0.1;
 const REPLACEMENT_RANGE: f64 = 5.0;
 const TOGGLE_MUTATION_RATE: f64 = 0.01;
 impl Genome {
-
-    ///// Run the input through the neural network
-    //pub fn forward(&self, input: &[u32]) -> Vec<u32> {
-    //    // ensure cyclic systems are... handled or maybe keep them from existing below
-    //    // idk how we're gonna do this function, hopefully we don't modify the structs
-    //    // maybe we don't do a forward here, and handle that in the population manager?
-    //    // honestly if we detect a cycle here, lets just return a None or error or something
-    //    todo!()
-    //}
-
-
-    /// Generate a child with another genome, no mutations applied.
-    pub fn reproduce_with(&self, partner: &Genome) -> Genome {
+    /// TODO
+    /// Generate a child from two parent genomes, no mutations applied.
+    pub fn crossover(parent0: &Genome, parent1: &Genome) -> Genome {
         todo!()
     }
 
 
+    /// TODO get the list of mutations made this generation,
+    ///     so that the same innovation gets the same innov number
     /// Master mutate function, calls the other mutate functions
     /// NOTE: no guarantee that the genome produced is valid
     pub fn mutate(&mut self, innovator: &mut GlobalInnovator) {
@@ -124,6 +116,7 @@ impl Genome {
     }
 
 
+    /// TODO take innovations list
     /// A type of mutation, chooses one connection to split up
     pub fn add_node(&mut self, innovator: &mut GlobalInnovator) {
         if self.connection_genes.len() < 1 {
@@ -173,6 +166,7 @@ impl Genome {
     }
 
 
+    /// TODO take in innovations list
     /// A type of mutation, finds two unconnected nodes and adds a connection
     pub fn add_connection(&mut self, innovator: &mut GlobalInnovator) {
         if self.node_genes.len() < 2 {
