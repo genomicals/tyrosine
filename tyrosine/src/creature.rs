@@ -73,6 +73,8 @@ impl Genome {
     //    todo!()
     //}
 
+
+    /// Generate a child with another genome, no mutations applied.
     pub fn reproduce_with(&self, partner: &Genome) -> Genome {
         todo!()
     }
