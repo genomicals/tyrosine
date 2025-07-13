@@ -1,6 +1,6 @@
 pub mod genome;
 pub mod phenotype;
-pub mod population_manager;
+pub mod population;
 
 
 

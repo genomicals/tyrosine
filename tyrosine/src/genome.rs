@@ -1,3 +1,5 @@
+use std::collections::{BTreeSet, HashMap, HashSet};
+
 use rand::{seq::{IndexedMutRandom, IndexedRandom}, Rng};
 use serde::{Serialize, Deserialize};
 use rand_distr::{Distribution, Normal};
@@ -23,14 +25,14 @@ impl GlobalInnovator {
 
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct NodeGene {
     pub id: usize,
 }
 
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct ConnectionGene {
     pub in_node: usize,
     pub out_node: usize,
@@ -64,7 +66,6 @@ const TOGGLE_MUTATION_RATE: f64 = 0.01;
 impl Genome {
     /// Create a new genome with the specified number of inputs and outputs
     pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
-
         let node_genes = (0..(num_inputs + 1 + num_outputs)).into_iter()
             .map(|i| NodeGene { id: i})
             .collect();
@@ -78,10 +79,46 @@ impl Genome {
     }
 
 
-    /// TODO
     /// Generate a child from two parent genomes, no mutations applied
-    pub fn crossover(parent0: &Genome, parent1: &Genome) -> Genome {
-        todo!()
+    /// The first parent will be favored over the second
+    pub fn crossover(fit_parent: &Genome, unfit_parent: &Genome, ) -> Genome {
+        let mut child_connections: Vec<ConnectionGene> = Vec::new();        
+
+        let mut fitter_map = HashMap::new();
+        for conn in &fit_parent.connection_genes {
+            fitter_map.insert(conn.innov, conn);
+        }
+
+        let mut unfit_map = HashMap::new();
+        for conn in &unfit_parent.connection_genes {
+            unfit_map.insert(conn.innov, conn);
+        }
+
+        // iterate over both parents, grabbing all innov numbers and saving them to compare
+        let all_innovs: BTreeSet<usize> = fitter_map.keys().chain(unfit_map.keys()).cloned().collect();
+        for innov in all_innovs { //iterate through all combined innov numbers
+            match (fitter_map.get(&innov), unfit_map.get(&innov)) {
+                (Some(&a), Some(&b)) => {
+                    // matching gene: pick randomly
+                    child_connections.push(if rand::random() { a.clone() } else { b.clone() });
+                }
+                (Some(&a), None) => {
+                    // excess: take from fitter
+                    child_connections.push(a.clone());
+                }
+                (None, Some(_b)) => {
+                    // gene only in less-fit: ignore
+                }
+                (None, None) => unreachable!(),
+            }
+        }
+
+        Genome {
+            num_inputs: fit_parent.num_inputs,
+            num_outputs: fit_parent.num_outputs,
+            node_genes: fit_parent.node_genes.clone(), //fitter parent has same structure, guaranteed to have the same nodes
+            connection_genes: child_connections,
+        }
     }
 
 
