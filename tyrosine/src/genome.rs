@@ -49,7 +49,7 @@ impl ConnectionGene {
 
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Genome {
     pub num_inputs: usize,
     pub num_outputs: usize,

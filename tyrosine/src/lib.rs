@@ -1,5 +1,6 @@
 pub mod genome;
 pub mod phenotype;
+pub mod species;
 pub mod population;
 
 
