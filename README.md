@@ -16,6 +16,7 @@ There are several instances where specific features are up to the implementer's 
 Here are some choices we made:
 - A bias node is included in the inputs
 - Cyclic connections will be disallowed
+- Species won't be removed for becoming stale, only when allocated reproductive slots reach 0
 
 ## Trivia
 Tyrosine is an amino acid. The word comes from the Greek "tyros", which means
