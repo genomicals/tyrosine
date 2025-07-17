@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use rand::seq::IndexedRandom;
 
-use crate::{genome::GlobalInnovator, phenotype::Phenotype, species::{Species, SpeciesCounter}};
+use crate::{genome::{Genome, GlobalInnovator}, phenotype::Phenotype, species::{Species, SpeciesCounter}};
 
 
 
@@ -13,17 +14,33 @@ pub struct Population {
 impl Population {
     /// Create a new population of genomes
     /// TODO: create all the creatures, mutate them, and sort them into species
-    pub fn new(population_size: usize) -> Self {
+    pub fn new(num_inputs: usize, num_outputs: usize, population_size: usize) -> Self {
+        let mut innovator = GlobalInnovator::new();
+        let mut species_counter = SpeciesCounter::new();
+
+        // initialize
+        let population = (0..population_size).into_iter()
+            .map(|_| Genome::new(num_inputs, num_outputs))
+            .collect::<Vec<Genome>>();
+
+        // mutate
+        let mut innovations = HashMap::new(); //ensure innovation numbers are reused
+        let mutated_population = population.into_iter()
+            .map(|genome| Phenotype::from_mutation(&genome, &mut innovator, &mut innovations))
+            .collect::<Vec<Phenotype>>();
+
+        // assign species
+        let mut rng = rand::rng();
+        let chosen = mutated_population.choose(&mut rng).unwrap(); //safe unwrap
+        let mut species = vec![Species::new(&chosen.genome, species_counter.next())];
+        Species::sort_species(&mut species, mutated_population, &mut species_counter);
         
-
-        todo!();
-
         Population {
-            innovator: GlobalInnovator::new(),
-            species_counter: SpeciesCounter::new(),
+            innovator,
+            species_counter,
             population_size,
-            species: Vec::new(),
-        };
+            species,
+        }
     }
 
 

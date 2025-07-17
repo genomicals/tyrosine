@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use crate::genome::{ConnectionGene, Genome};
+use crate::genome::{ConnectionGene, Genome, GlobalInnovator};
 
 
 
@@ -8,6 +8,23 @@ pub struct Phenotype {
     pub toposorted_nodes: Vec<usize>, //ids
 }
 impl Phenotype {
+    /// Repeatedly mutates a genome until it gets a valid Phenotype
+    pub fn from_mutation(genome: &Genome, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) -> Phenotype {
+        loop {
+            let mut gc = genome.clone();
+            gc.mutate(innovator, innovations);
+            match Phenotype::from_genome(gc) {
+                Some(x) => { //successfully generate a phenotype
+                    return x;
+                },
+                None => {
+                    continue;
+                },
+            }
+        }
+    }
+
+
     /// Generates a Phenotype from Genome and checks if it's a valid genome
     pub fn from_genome(genome: Genome) -> Option<Phenotype> {
         let mut graph: HashMap<usize, Vec<usize>> = HashMap::new(); //maps dependencies to their output

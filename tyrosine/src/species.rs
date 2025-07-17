@@ -1,5 +1,5 @@
 use std::collections::{BTreeSet, HashMap};
-
+use rand::seq::SliceRandom;
 use crate::{genome::Genome, phenotype::Phenotype};
 
 
@@ -31,6 +31,41 @@ const C2: f64 = 1.0; //disjoint weight
 const C3: f64 = 0.4; //weight difference multiplier
 const SPECIES_THRESHOLD: f64 = 3.0; //used to determine if two genomes are the same species
 impl Species {
+    /// Create a new species from a genome
+    pub fn new(genome: &Genome, id: usize) -> Self {
+        Species {
+            type_specimen: genome.clone(),
+            members: Vec::new(),
+            id,
+        }
+    }
+
+
+    /// Take phenotypes and sort them into the right species
+    pub fn sort_species(species: &mut Vec<Species>, mut phenotypes: Vec<Phenotype>, species_counter: &mut SpeciesCounter) {
+        let mut rng = rand::rng();
+        phenotypes.shuffle(&mut rng); //delete biases here
+
+        'phen_loop: for phenotype in phenotypes {
+            let mut indices: Vec<usize> = (0..species.len()).collect();
+            indices.shuffle(&mut rng); //shuffle to reduce biases (in a way that doesn't cause borrow errors)
+
+            for i in indices {
+                let cur_species = &mut species[i];
+                if Species::compatibility_distance(&phenotype.genome, &cur_species.type_specimen) < SPECIES_THRESHOLD {
+                    cur_species.members.push(phenotype); //push to species
+                    continue 'phen_loop;
+                }
+            }
+
+            // didn't match any existing species, create new species
+            let mut new_species = Species::new(&phenotype.genome, species_counter.next());
+            new_species.members.push(phenotype); //push this phenotype
+            species.push(new_species);
+        }
+    }
+
+
     /// Calculates how genetically different two genomes are, using NEAT's formula:
     /// δ = c1*E/N + c2*D/N + c3*W
     /// E = excess genes, D = disjoint genes, W = avg weight diff, N = normalizer
