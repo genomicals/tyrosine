@@ -13,7 +13,6 @@ pub struct Population {
 }
 impl Population {
     /// Create a new population of genomes
-    /// TODO: create all the creatures, mutate them, and sort them into species
     pub fn new(num_inputs: usize, num_outputs: usize, population_size: usize) -> Self {
         let mut innovator = GlobalInnovator::new();
         let mut species_counter = SpeciesCounter::new();
