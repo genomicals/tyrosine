@@ -24,8 +24,7 @@ impl SpeciesCounter {
 pub struct Species {
     pub type_specimen: Genome, //may be part of the active population, or not
     pub members: Vec<Phenotype>,
-    //pub adjusted_fitnesses: Vec<f64>,
-    pub age: usize, //just a fun metric
+    pub id: usize, //for non-crucial historical reasons
 }
 const C1: f64 = 1.0; //excess weight
 const C2: f64 = 1.0; //disjoint weight

@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 
 use rand::{seq::{IndexedMutRandom, IndexedRandom}, Rng};
 use serde::{Serialize, Deserialize};
@@ -49,7 +49,7 @@ impl ConnectionGene {
 
 
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Genome {
     pub num_inputs: usize,
     pub num_outputs: usize,
@@ -81,7 +81,7 @@ impl Genome {
 
     /// Generate a child from two parent genomes, no mutations applied
     /// The first parent will be favored over the second
-    pub fn crossover(fit_parent: &Genome, unfit_parent: &Genome, ) -> Genome {
+    pub fn crossover(fit_parent: &Genome, unfit_parent: &Genome) -> Genome {
         let mut child_connections: Vec<ConnectionGene> = Vec::new();        
 
         let mut fitter_map = HashMap::new();
@@ -122,21 +122,19 @@ impl Genome {
     }
 
 
-    /// TODO get the list of mutations made this generation,
-    ///     so that the same innovation gets the same innov number
     /// Master mutate function, calls the other mutate functions
     /// NOTE: no guarantee that the genome produced is valid
-    pub fn mutate(&mut self, innovator: &mut GlobalInnovator) {
+    pub fn mutate(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         let mut rng = rand::rng();
 
         self.mutate_weights_and_toggle();
 
         if rng.random::<f64>() < CONNECTION_MUTATION_RATE {
-            self.add_connection(innovator);
+            self.add_connection(innovator, innovations);
         }
 
         if rng.random::<f64>() < NODE_MUTATION_RATE {
-            self.add_node(innovator);
+            self.add_node(innovator, innovations);
         }
     }
 
@@ -170,7 +168,7 @@ impl Genome {
 
     /// TODO take innovations list
     /// A type of mutation, chooses one connection to split up
-    pub fn add_node(&mut self, innovator: &mut GlobalInnovator) {
+    pub fn add_node(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         if self.connection_genes.len() < 1 {
             return;
         }
@@ -188,20 +186,42 @@ impl Genome {
         let new_id = self.node_genes.last().unwrap().id + 1;
         self.node_genes.push(NodeGene { id: new_id});
 
+        // ensure we reuse innov numbers and remember any new innovations
+        let innov0;
+        let innov1;
+        match innovations.get(&(chosen.in_node, new_id)) {
+            Some(x) => { //innovation already exists
+                innov0 = *x;
+            },
+            None => { //new innovation
+                innov0 = innovator.next();
+                innovations.insert((chosen.in_node, new_id), innov0);
+            },
+        }
+        match innovations.get(&(new_id, chosen.out_node)) {
+            Some(x) => { //innovation already exists
+                innov1 = *x;
+            },
+            None => { //new innovation
+                innov1 = innovator.next();
+                innovations.insert((new_id, chosen.out_node), innov1);
+            },
+        }
+
         // create two new connections
         let connection_0 = ConnectionGene {
             in_node: chosen.in_node,
             out_node: new_id,
             weight: chosen.weight, //preserve the functionality of the old connection
             enabled: true,
-            innov: innovator.next(),
+            innov: innov0,
         };
         let connection_1 = ConnectionGene {
             in_node: new_id,
             out_node: chosen.out_node,
-            weight: 1.0,
+            weight: 1.0, //ensure the other connection still functions like the old connection
             enabled: true,
-            innov: innovator.next(),
+            innov: innov1,
         };
 
         // disable and modify old connection
@@ -220,7 +240,7 @@ impl Genome {
 
     /// TODO take in innovations list
     /// A type of mutation, finds two unconnected nodes and adds a connection
-    pub fn add_connection(&mut self, innovator: &mut GlobalInnovator) {
+    pub fn add_connection(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         if self.node_genes.len() < 2 {
             return;
         }
@@ -272,15 +292,28 @@ impl Genome {
             return;
         }
 
-        // randomly pick a new node from the possibilities
+        // randomly pick a connection from the possibilities
         let mut rng = rand::rng();
         let chosen = candidates.choose(&mut rng).copied().unwrap(); //safe unwrap, checked above
+
+        // ensure we reuse innov numbers and remember any new innovations
+        let innov;
+        match innovations.get(&(chosen.0, chosen.1)) {
+            Some(x) => { //innovation already exists
+                innov = *x;
+            },
+            None => { //new innovation
+                innov = innovator.next();
+                innovations.insert((chosen.0, chosen.1), innov);
+            },
+        }
+
         self.connection_genes.push(ConnectionGene {
             in_node: chosen.0,
             out_node: chosen.1,
             weight: 1.0,
             enabled: true,
-            innov: innovator.next(),
+            innov,
         });
 
         // sort the connection genes by innov number

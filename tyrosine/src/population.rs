@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{genome::GlobalInnovator, phenotype::Phenotype, species::{Species, SpeciesCounter}};
 
 
@@ -37,6 +39,6 @@ impl Population {
     /// Evolve the population by one generation
     /// NOTE: the order of specimens received to calculate fitness is the same order here
     pub fn evolve(&mut self, fitnesses: Vec<f64>) {
-        let mut new_innovations: Vec<(usize, usize)> = Vec::new(); //figure out how this is supposed to work
+        let mut new_innovations: HashMap<(usize, usize), usize> = HashMap::new(); //ensure duplicate innovations get the same innov number
     }
 }
