@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 use rand::seq::IndexedRandom;
-
 use crate::{genome::{Genome, GlobalInnovator}, phenotype::Phenotype, species::{Species, SpeciesCounter}};
 
 
 
 pub struct Population {
-    pub innovator: GlobalInnovator,
-    pub species_counter: SpeciesCounter,
-    pub population_size: usize,
-    pub species: Vec<Species>,
+    innovator: GlobalInnovator,
+    species_counter: SpeciesCounter,
+    species: Vec<Species>,
+    population_size: usize,
+    num_inputs: usize,
+    num_outputs: usize,
+    index_cache: HashMap<usize, (usize, usize)>,
 }
 impl Population {
     /// Create a new population of genomes
@@ -34,27 +36,59 @@ impl Population {
         let mut species = vec![Species::new(&chosen.genome, species_counter.next())];
         Species::sort_species(&mut species, mutated_population, &mut species_counter);
         
-        Population {
+        let mut population = Population {
             innovator,
             species_counter,
             population_size,
             species,
+            num_inputs,
+            num_outputs,
+            index_cache: HashMap::new(),
+        };
+        population.update_cache(); //easy indexing
+
+        population
+    }
+
+
+    /// Update index cache to speed up phenotype indexing
+    pub fn update_cache(&mut self) {
+        let mut new_cache = HashMap::new();
+        let mut population_counter = 0;
+        
+        for (i, s) in self.species.iter().enumerate() {
+            new_cache.extend((0..s.members.len()).into_iter()
+                .map(|x| (population_counter+x, (i, x))) //convert member index to (global index, (species index, member index))
+            );
+            population_counter += s.members.len();
         }
+
+        assert_eq!(population_counter, 1000, "Population size mismatch during caching!");
+        self.index_cache = new_cache;
     }
 
 
-    /// Retrieve all specimens for fitness evaluation
-    pub fn get_specimens(&mut self) -> Vec<&mut Phenotype> {
-        let specimens = self.species.iter_mut()
-            .flat_map(|s| &mut s.members)
-            .collect::<Vec<&mut Phenotype>>();
-        specimens
+    /// Feed the input and generate an output for a particular index in the population.
+    pub fn activate_index(idx: usize, input: &mut Vec<f64>) -> Vec<f64> {
+        Vec::new()
     }
 
 
-    /// Evolve the population by one generation
+    /// TODO
+    /// Evolve the population by one generation with one fitness metric
     /// NOTE: the order of specimens received to calculate fitness is the same order here
-    pub fn evolve(&mut self, fitnesses: Vec<f64>) {
+    pub fn evolve(&mut self, fitnesses: &Vec<f64>) {
         let mut new_innovations: HashMap<(usize, usize), usize> = HashMap::new(); //ensure duplicate innovations get the same innov number
     }
+
+
+    ///// TODO, unless it's pointless? the user can just make the primary one scale
+    /////     larger than the secondary and sum them and use the normal evolve function
+    /////
+    ///// Evolve the population by one generation with two fitness metrics
+    ///// The primary metric is used first, with ties broken by the second metric
+    ///// NOTE: the order of specimens received to calculate fitness is the same order here
+    //pub fn evolve2(&mut self, fitnesses_primary: Vec<f64>, fitnesses_secondary: Vec<f64>) {
+
+    //}
 }
