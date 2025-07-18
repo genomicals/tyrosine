@@ -6,7 +6,8 @@ Mascot by [@Nauxe](https://github.com/nauxe)
 NEAT machine learning library for Rust.
 
 NeuroEvolution of Augmenting Topologies (NEAT) is a genetic algorithm which
-evolves a population of neural networks. NEAT aims to find an optimal set of
+evolves a population of neural networks. The population is split into
+several genetically-distinct species. NEAT aims to find an optimal set of
 weights in addition to an optimal neural network structure.
 
 Link to original paper <a href="https://nn.cs.utexas.edu/downloads/papers/stanley.cec02.pdf" target="_blank">here</a>.
