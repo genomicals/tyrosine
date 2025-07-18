@@ -43,7 +43,7 @@ impl Population {
             species,
             num_inputs,
             num_outputs,
-            index_cache: HashMap::new(),
+            index_cache: HashMap::with_capacity(population_size),
         };
         population.update_cache(); //easy indexing
 
@@ -53,18 +53,17 @@ impl Population {
 
     /// Update index cache to speed up phenotype indexing
     pub fn update_cache(&mut self) {
-        let mut new_cache = HashMap::new();
         let mut population_counter = 0;
+        self.index_cache.clear(); //apparently nearly no slowdown, safer this way
         
         for (i, s) in self.species.iter().enumerate() {
-            new_cache.extend((0..s.members.len()).into_iter()
+            self.index_cache.extend((0..s.members.len()).into_iter()
                 .map(|x| (population_counter+x, (i, x))) //convert member index to (global index, (species index, member index))
             );
             population_counter += s.members.len();
         }
 
         assert_eq!(population_counter, 1000, "Population size mismatch during caching!");
-        self.index_cache = new_cache;
     }
 
 
