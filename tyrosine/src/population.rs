@@ -68,8 +68,10 @@ impl Population {
 
 
     /// Feed the input and generate an output for a particular index in the population.
-    pub fn activate_index(idx: usize, input: &mut Vec<f64>) -> Vec<f64> {
-        Vec::new()
+    pub fn activate_index(&self, idx: usize, input: &mut Vec<f64>) -> Option<Vec<f64>> {
+        let pair = self.index_cache.get(&idx)?; //will fail if user provided number larger than the population size
+        let phenotype = &self.species[pair.0].members[pair.1];
+        Some(phenotype.activate(input))
     }
 
 
