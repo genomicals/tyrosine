@@ -139,7 +139,7 @@ impl Genome {
 
 
     /// Apply mutations to internal weights
-    pub fn mutate_weights_and_toggle(&mut self) {
+    fn mutate_weights_and_toggle(&mut self) {
         let mut rng = rand::rng();
         let normal = Normal::new(0.0, PERTUBATION_STD).unwrap(); //probably safe unwrap
 
@@ -166,7 +166,7 @@ impl Genome {
 
 
     /// A type of mutation, chooses one connection to split up
-    pub fn add_node(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
+    fn add_node(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         if self.connection_genes.len() < 1 {
             return;
         }
@@ -237,7 +237,7 @@ impl Genome {
 
 
     /// A type of mutation, finds two unconnected nodes and adds a connection
-    pub fn add_connection(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
+    fn add_connection(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         if self.node_genes.len() < 2 {
             return;
         }

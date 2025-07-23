@@ -97,7 +97,6 @@ impl Population {
     }
 
 
-    /// TODO
     /// Evolve the population by one generation with provided fitness
     /// NOTE: the order of specimens received to calculate fitness is the same order here
     pub fn evolve(&mut self, fitnesses: &Vec<f64>) {
@@ -145,7 +144,6 @@ impl Population {
         // see how many slots we have total, and adjust to ensure we have self.population_size
         let total_slots: usize = reproductive_slots.iter().sum();
         let remainder = self.population_size - total_slots;
-        assert!(remainder >= 0, "A bug caused the reproductive slots to be larger than the population!");
 
         if remainder > 0 {
             let extra_slots = Population::distribute_evenly(remainder, self.species.len());
@@ -155,22 +153,28 @@ impl Population {
         }
 
         // kill off species with 0 reproductive slots
-
+        let species = mem::take(&mut self.species); //maybe this can be done differently
+        let (reproductive_slots, mut species): (Vec<_>, Vec<_>) = reproductive_slots.into_iter()
+            .zip(species)
+            .filter(|(slots, _)| *slots != 0 as usize)
+            .collect();
 
         // for each species, kill off 50%, choose a new type specimen, and return a new generation with the elite member
+        let mut new_population = vec![];
         let mut new_innovations: HashMap<(usize, usize), usize> = HashMap::new(); //ensure duplicate innovations get the same innov number
-
+        for (spec, slots) in species.iter_mut().zip(reproductive_slots) {
+            spec.species_fitness = None; //reset this just because
+            spec.members.truncate(spec.members.len() / 2); //remove half
+            spec.choose_type_specimen();
+            spec.populate(&mut new_population, slots, &mut self.innovator, &mut new_innovations);
+        }
 
         // assign all phenotypes to new species
+        Species::sort_species(&mut species, new_population, &mut self.species_counter);
 
-
-        // remember to update cache
+        // remember to update cache and increment generation
         self.update_cache();
-
-
-
-
-
+        self.generation_number += 1;
     }
 }
 

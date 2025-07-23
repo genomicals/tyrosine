@@ -1,8 +1,10 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
+use serde::{Deserialize, Serialize};
 use crate::genome::{ConnectionGene, Genome, GlobalInnovator};
 
 
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Phenotype {
     pub genome: Genome,
     pub toposorted_nodes: Vec<usize>, //ids

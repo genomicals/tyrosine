@@ -1,6 +1,6 @@
-use std::collections::{BTreeSet, HashMap};
-use rand::seq::SliceRandom;
-use crate::{genome::Genome, phenotype::Phenotype};
+use std::{collections::{BTreeSet, HashMap}, mem};
+use rand::seq::{index::sample, IndexedRandom, SliceRandom};
+use crate::{genome::{Genome, GlobalInnovator}, phenotype::Phenotype};
 
 
 
@@ -32,12 +32,13 @@ const C2: f64 = 1.0; //disjoint weight
 const C3: f64 = 0.4; //weight difference multiplier
 const SPECIES_THRESHOLD: f64 = 3.0; //used to determine if two genomes are the same species
 impl Species {
-    /// Create a new species from a genome
+    /// Create a new species from a genome (sets it as the type specimen)
     pub fn new(genome: &Genome, id: usize) -> Self {
         Species {
             type_specimen: genome.clone(),
             members: Vec::new(),
             id,
+            species_fitness: None,
         }
     }
 
@@ -63,6 +64,55 @@ impl Species {
             let mut new_species = Species::new(&phenotype.genome, species_counter.next());
             new_species.members.push(phenotype); //push this phenotype
             species.push(new_species);
+        }
+    }
+
+
+    /// Out of the current members, choose a type specimen.
+    pub fn choose_type_specimen(&mut self) {
+        let mut rng = rand::rng();
+        let chosen = match self.members.choose(&mut rng) {
+            Some(x) => x,
+            None => return, //if no members at all, just do nothing
+        };
+        self.type_specimen = chosen.genome.clone();
+    }
+
+
+    /// Fill the specified number of slots with new phenotypes.
+    pub fn populate(&mut self, vec: &mut Vec<Phenotype>, mut slots: usize, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
+        assert!(self.members.len() > 0); //this should be the case
+        assert!(slots > 0);
+        let mut rng = rand::rng();
+        let members = mem::take(&mut self.members); //maybe this could be done differently
+        vec.push(members[0].clone()); //push the elite member
+        slots -= 1;
+
+        // push newly born children
+        if members.len() == 1 { //asexual reproduction
+            while slots > 0 {
+                let this_genome = &members.first().unwrap().genome;
+                let phenotype = Phenotype::from_mutation(this_genome, innovator, innovations);
+                vec.push(phenotype);
+                slots -= 1;
+            }
+        } else { //sexual reproduction
+            while slots > 0 {
+                let indices = sample(&mut rng, members.len(), 2);
+                let fit_parent;
+                let unfit_parent;
+                if indices.index(0) > indices.index(1) { //first parent fitter
+                    fit_parent = members.get(indices.index(0)).unwrap();
+                    unfit_parent = members.get(indices.index(1)).unwrap();
+                } else { //second parent fitter
+                    fit_parent = members.get(indices.index(1)).unwrap();
+                    unfit_parent = members.get(indices.index(0)).unwrap();
+                }
+                let child_genome = Genome::crossover(&fit_parent.genome, &unfit_parent.genome);
+                let child = Phenotype::from_mutation(&child_genome, innovator, innovations);
+                vec.push(child);
+                slots -= 1;
+            }
         }
     }
 
