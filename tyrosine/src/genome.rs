@@ -1,5 +1,4 @@
 use std::collections::{BTreeSet, HashMap};
-
 use rand::{seq::{IndexedMutRandom, IndexedRandom}, Rng};
 use serde::{Serialize, Deserialize};
 use rand_distr::{Distribution, Normal};
@@ -166,7 +165,6 @@ impl Genome {
     }
 
 
-    /// TODO take innovations list
     /// A type of mutation, chooses one connection to split up
     pub fn add_node(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         if self.connection_genes.len() < 1 {
@@ -238,7 +236,6 @@ impl Genome {
     }
 
 
-    /// TODO take in innovations list
     /// A type of mutation, finds two unconnected nodes and adds a connection
     pub fn add_connection(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         if self.node_genes.len() < 2 {
@@ -320,8 +317,5 @@ impl Genome {
         self.connection_genes.sort_by_key(|c| c.innov);
     }
 }
-
-
-
 
 

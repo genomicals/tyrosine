@@ -25,6 +25,7 @@ pub struct Species {
     pub type_specimen: Genome, //may be part of the active population, or not
     pub members: Vec<Phenotype>,
     pub id: usize, //for non-crucial historical reasons
+    pub species_fitness: Option<f64>,
 }
 const C1: f64 = 1.0; //excess weight
 const C2: f64 = 1.0; //disjoint weight
@@ -125,11 +126,5 @@ impl Species {
         C3 * w
     }
 }
-
-
-
-
-
-
 
 
