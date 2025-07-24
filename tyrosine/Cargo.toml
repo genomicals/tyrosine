@@ -2,6 +2,14 @@
 name = "tyrosine"
 version = "0.9.0"
 edition = "2024"
+authors = ["Terrior"]
+description = "Rust implementation of the NEAT neuroevolution algorithm."
+homepage = "https://github.com/genomicals/tyrosine"
+repository = "https://github.com/genomicals/tyrosine"
+categories = ["algorithms", "science"]
+keywords = ["NEAT", "machine", "learning", "neural", "neuro", "evolution"]
+license = "GPL-2.0 OR GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 rand = "0.9.1"
