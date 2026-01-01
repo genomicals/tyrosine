@@ -114,6 +114,7 @@ impl Population {
             .map(|((x, _), _)| *x)
             .collect::<HashSet<usize>>()
             .len();
+        assert_eq!(species_count, self.species.len(), "Ensuring species count matches up.");
         let mut fitness_by_species = vec![vec![]; species_count];
         for ((s_i, _), fitness) in fitness_by_species_index {
             if s_i == fitness_by_species.len() {
@@ -128,6 +129,7 @@ impl Population {
         let mut total_fitness = 0.0;
 
         // sort all phenotypes within their species and calculate species fitnesses
+        assert_eq!(self.species.len(), fitness_by_species.len(), "Ensure lengths are the same.");
         for (spec, fits) in self.species.iter_mut().zip(fitness_by_species) {
             let mut zipped: Vec<_> = spec.members.drain(..).zip(fits).collect();
             zipped.sort_by(|x, y| y.1.partial_cmp(&x.1).unwrap_or(std::cmp::Ordering::Less));
