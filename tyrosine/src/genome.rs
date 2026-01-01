@@ -24,14 +24,14 @@ impl GlobalInnovator {
 
 
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NodeGene {
     pub id: usize,
 }
 
 
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct ConnectionGene {
     pub in_node: usize,
     pub out_node: usize,
@@ -48,7 +48,7 @@ impl ConnectionGene {
 
 
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Genome {
     pub num_inputs: usize,
     pub num_outputs: usize,

@@ -4,7 +4,7 @@ use crate::genome::{ConnectionGene, Genome, GlobalInnovator};
 
 
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Phenotype {
     pub genome: Genome,
     pub toposorted_nodes: Vec<usize>, //ids

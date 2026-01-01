@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem};
+use std::{collections::{HashMap, HashSet}, mem};
 use rand::seq::{IndexedRandom, SliceRandom};
 use crate::{genome::{Genome, GlobalInnovator}, phenotype::Phenotype, species::{Species, SpeciesCounter}};
 
@@ -65,7 +65,7 @@ impl Population {
             population_counter += s.members.len();
         }
 
-        assert_eq!(population_counter, 1000, "Population size mismatch discovered during caching!");
+        assert_eq!(population_counter, self.population_size, "Population size mismatch discovered during caching!");
     }
 
 
@@ -110,10 +110,13 @@ impl Population {
             .collect::<Vec<((usize, usize), f64)>>();
 
         // refactor to a list of lists
-        let mut fitness_by_species = vec![];
+        let species_count = fitness_by_species_index.iter()
+            .map(|((x, _), _)| *x)
+            .collect::<HashSet<usize>>()
+            .len();
+        let mut fitness_by_species = vec![vec![]; species_count];
         for ((s_i, _), fitness) in fitness_by_species_index {
             if s_i == fitness_by_species.len() {
-                fitness_by_species.push(vec![]);
                 fitness_by_species.last_mut().unwrap().push(fitness);
             } else if s_i < fitness_by_species.len() {
                 fitness_by_species[s_i].push(fitness);

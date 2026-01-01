@@ -21,6 +21,7 @@ impl SpeciesCounter {
 }
 
 
+#[derive(Clone)]
 pub struct Species {
     pub type_specimen: Genome, //may be part of the active population, or not
     pub members: Vec<Phenotype>,
