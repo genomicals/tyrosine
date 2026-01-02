@@ -87,7 +87,7 @@ impl Phenotype {
         // initialize input values
         node_values.insert(0, 1.0); //bias node
         for i in 1..self.genome.num_inputs {
-            node_values.insert(i, inputs[i]);
+            node_values.insert(i, inputs[i]); //TODO i is too big for inputs array
         }
 
         // incoming connections references for each node id
@@ -100,7 +100,7 @@ impl Phenotype {
 
         // evaluate nodes in topological order
         // NOTE this can be optimized by pre-collecting the weights as such:
-        //     HashMap<usize, Vec<(usize, f64)>> // out_node → [(in_node, weight)]
+        //     HashMap<usize, Vec<(usize, f64)>> // out_node -> [(in_node, weight)]
         // but if performance is fine then don't bother
         for &node_id in &self.toposorted_nodes {
             if node_values.contains_key(&node_id) {
