@@ -50,7 +50,7 @@ impl ConnectionGene {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Genome {
-    pub num_inputs: usize,
+    pub num_inputs: usize, //includes bias
     pub num_outputs: usize,
     pub node_genes: Vec<NodeGene>,
     pub connection_genes: Vec<ConnectionGene>,
@@ -70,7 +70,7 @@ impl Genome {
             .collect();
 
         Genome {
-            num_inputs: num_inputs + 1,
+            num_inputs: num_inputs + 1, //add bias
             num_outputs,
             node_genes,
             connection_genes: Vec::new(),

@@ -11,8 +11,8 @@ pub struct Population {
     index_cache: HashMap<usize, (usize, usize)>,
     pub species: Vec<Species>,
     pub population_size: usize,
-    pub num_inputs: usize,
-    pub num_outputs: usize,
+    //pub num_inputs: usize,
+    //pub num_outputs: usize,
 }
 impl Population {
     /// Create a new population of genomes
@@ -43,8 +43,8 @@ impl Population {
             species_counter,
             population_size,
             species,
-            num_inputs,
-            num_outputs,
+            //num_inputs,
+            //num_outputs,
             index_cache: HashMap::with_capacity(population_size),
         };
         population.update_cache(); //easy indexing

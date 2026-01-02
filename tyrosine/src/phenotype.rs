@@ -84,10 +84,10 @@ impl Phenotype {
         // note, entries only exist once the value is calculated, otherwise it will be missing here
         let mut node_values: HashMap<usize, f64> = HashMap::new();
 
-        // initialize input values
+        // initialize input values in the nodes_values map
         node_values.insert(0, 1.0); //bias node
-        for i in 1..self.genome.num_inputs {
-            node_values.insert(i, inputs[i]); //TODO i is too big for inputs array
+        for i in 0..self.genome.num_inputs - 1 {
+            node_values.insert(i+1, inputs[i]); //offset the key to account for bias node
         }
 
         // incoming connections references for each node id
@@ -122,6 +122,8 @@ impl Phenotype {
         let outputs = self.genome.node_genes[output_start..output_end].iter()
             .map(|n| *node_values.get(&n.id).unwrap_or(&0.0))
             .collect::<Vec<f64>>();
+
+        dbg!("{:?}", node_values);
 
         outputs
     }

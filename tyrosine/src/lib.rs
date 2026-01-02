@@ -51,11 +51,10 @@ mod tests {
     #[test]
     fn activate() {
         let pop = Population::new(5, 2, 5);
-        pop.activate_index(0, &mut vec![2.0, 1.0, 1.5, 0.0, 4.0]);
-        //match pop.activate_index(0, &mut vec![2.0, 1.0, 1.5, 0.0, 4.0]) {
-        //    Some(x) => println!("{:?}", x),
-        //    None => panic!("Valid index was rejected."),
-        //}
+        let res = pop.activate_index(0, &mut vec![2.0, 1.0, 1.5, 0.0, 4.0]);
+        println!("{:?}", res);
+        //println!("{:?}", pop.species[0].members[0].);
+        //panic!();
     }
 }
 
