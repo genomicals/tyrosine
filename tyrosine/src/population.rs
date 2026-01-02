@@ -55,17 +55,28 @@ impl Population {
 
     /// Update index cache to speed up phenotype indexing
     pub fn update_cache(&mut self) {
-        let mut population_counter = 0;
-        self.index_cache.clear(); //apparently nearly no slowdown, safer this way
-        
-        for (i, s) in self.species.iter().enumerate() {
-            self.index_cache.extend((0..s.members.len()).into_iter()
-                .map(|x| (population_counter+x, (i, x))) //convert member index to (global index, (species index, member index))
-            );
-            population_counter += s.members.len();
+        // ensure all species have at least one member before starting
+        for s in &self.species {
+            assert!(s.members.len() > 0, "All species have at least one member before caching.");
         }
 
-        assert_eq!(population_counter, self.population_size, "Population size mismatch discovered during caching!");
+        let mut population_offset = 0;
+        self.index_cache.clear(); //apparently nearly no slowdown, safer this way
+
+        for (i, s) in self.species.iter().enumerate() {
+            self.index_cache.extend((0..s.members.len()).into_iter()
+                .map(|x| (population_offset+x, (i, x))) //convert member index to (global index, (species index, member index))
+            );
+            population_offset += s.members.len();
+        }
+
+        assert_eq!(population_offset, self.population_size, "Population size mismatch discovered during caching!");
+
+        let species_count = self.index_cache.iter()
+            .map(|(_, (x, _))| *x)
+            .collect::<HashSet<usize>>()
+            .len();
+        assert_eq!(species_count, self.species.len(), "Species count vs new cache.")
     }
 
 
@@ -98,11 +109,10 @@ impl Population {
 
 
     /// Evolve the population by one generation with provided fitness
-    /// NOTE: the order of specimens received to calculate fitness is the same order here
+    /// NOTE the order of specimens received to calculate fitness is the same order here
+    /// TODO should implement an error class, could communicate fixable errors to the user like mismatched fitness size
     pub fn evolve(&mut self, fitnesses: &Vec<f64>) {
-        //let fitness_map = (0..self.population_size).into_iter() //attach the fitness to the id (why is this necessary?)
-        //    .zip(fitnesses.clone())
-        //    .collect::<HashMap<usize, f64>>();
+        assert_eq!(fitnesses.len(), self.population_size, "Fitnesses count and population size match.");
 
         let fitness_by_species_index = fitnesses.iter()
             .enumerate()
@@ -110,12 +120,7 @@ impl Population {
             .collect::<Vec<((usize, usize), f64)>>();
 
         // refactor to a list of lists
-        let species_count = fitness_by_species_index.iter()
-            .map(|((x, _), _)| *x)
-            .collect::<HashSet<usize>>()
-            .len();
-        assert_eq!(species_count, self.species.len(), "Ensuring species count matches up.");
-        let mut fitness_by_species = vec![vec![]; species_count];
+        let mut fitness_by_species = vec![vec![]; self.species.len()];
         for ((s_i, _), fitness) in fitness_by_species_index {
             if s_i == fitness_by_species.len() {
                 fitness_by_species.last_mut().unwrap().push(fitness);
@@ -129,8 +134,10 @@ impl Population {
         let mut total_fitness = 0.0;
 
         // sort all phenotypes within their species and calculate species fitnesses
-        assert_eq!(self.species.len(), fitness_by_species.len(), "Ensure lengths are the same.");
+        assert_eq!(self.species.len(), fitness_by_species.len(), "Ensure lengths of self.species and fitness_by_species are the same.");
         for (spec, fits) in self.species.iter_mut().zip(fitness_by_species) {
+            assert_ne!(spec.members.len(), 0, "All species have at least 1 member before calculating fitness.");
+            assert_eq!(spec.members.len(), fits.len(), "Ensure number of species members and fitnesses for this species are the same.");
             let mut zipped: Vec<_> = spec.members.drain(..).zip(fits).collect();
             zipped.sort_by(|x, y| y.1.partial_cmp(&x.1).unwrap_or(std::cmp::Ordering::Less));
             let (phens, fits): (Vec<_>, Vec<_>) = zipped.into_iter().unzip();
@@ -139,7 +146,11 @@ impl Population {
             total_fitness += spec.species_fitness.unwrap(); //safe unwrap
         }
 
-        // when we implement recording a generation, do it here after all the sorting is done
+        for s in &self.species {
+            assert_ne!(s.members.len(), 0, "All species have at least 1 member before allotting slots.");
+        }
+
+        // TODO when we implement recording a generation, do it here after all the sorting is done
 
         // now we commence natural selection
         let mut reproductive_slots: Vec<_> = self.species.iter()
@@ -148,7 +159,7 @@ impl Population {
 
         // see how many slots we have total, and adjust to ensure we have self.population_size
         let total_slots: usize = reproductive_slots.iter().sum();
-        let remainder = self.population_size - total_slots;
+        let remainder = self.population_size - total_slots; //not enough slots, we need this many more
 
         if remainder > 0 {
             let extra_slots = Population::distribute_evenly(remainder, self.species.len());
@@ -157,8 +168,8 @@ impl Population {
             }
         }
 
-        // kill off species with 0 reproductive slots
-        let species = mem::take(&mut self.species); //maybe this can be done differently
+        // kill off species with 0 reproductive slots so they don't reproduce
+        let species = mem::take(&mut self.species); //maybe this can be done differently, empties self.species for now
         let (reproductive_slots, mut species): (Vec<_>, Vec<_>) = reproductive_slots.into_iter()
             .zip(species)
             .filter(|(slots, _)| *slots != 0 as usize)
@@ -167,15 +178,25 @@ impl Population {
         // for each species, kill off 50%, choose a new type specimen, and return a new generation with the elite member
         let mut new_population = vec![];
         let mut new_innovations: HashMap<(usize, usize), usize> = HashMap::new(); //ensure duplicate innovations get the same innov number
+        // NOTE: we don't actually need to track existing innovations, just have to number newly created ones
         for (spec, slots) in species.iter_mut().zip(reproductive_slots) {
+            assert_ne!(spec.members.len(), 0, "All species have at least 1 member before repopulating.");
             spec.species_fitness = None; //reset this just because
-            spec.members.truncate(spec.members.len() / 2); //remove half
-            spec.choose_type_specimen();
+            spec.members.truncate((spec.members.len() / 2).max(1)); //remove half but keep at least 1 for populating
+            spec.choose_type_specimen(); //TODO need to ensure every species has members
+
+            // partially fill new_population with all children of this species, depending on allotted slots
             spec.populate(&mut new_population, slots, &mut self.innovator, &mut new_innovations);
+
+            // finally remove all members from this species and insert into new_population
+            new_population.append(&mut spec.members);
         }
+
+        assert_eq!(self.population_size, new_population.len(), "New population size matches specified population size.");
 
         // assign all phenotypes to new species
         Species::sort_species(&mut species, new_population, &mut self.species_counter);
+        self.species = species; //ensure we replace the population
 
         // remember to update cache and increment generation
         self.update_cache();

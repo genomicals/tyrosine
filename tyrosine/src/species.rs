@@ -46,8 +46,20 @@ impl Species {
 
     /// Take phenotypes and sort them into the right species
     pub fn sort_species(species: &mut Vec<Species>, mut phenotypes: Vec<Phenotype>, species_counter: &mut SpeciesCounter) {
+
+        // first ensure all species are devoid of members
+        for s in species.iter() {
+            assert_eq!(s.members.len(), 0, "All species have 0 members before sorting population.");
+        }
+
         let mut rng = rand::rng();
         phenotypes.shuffle(&mut rng); //delete biases here
+
+        // if no species, then just create one from the first phenotype
+        if species.len() == 0 {
+            let new_species = Species::new(&phenotypes[0].genome, species_counter.next());
+            species.push(new_species);
+        }
 
         'phen_loop: for phenotype in phenotypes {
             let mut indices: Vec<usize> = (0..species.len()).collect();
@@ -66,6 +78,9 @@ impl Species {
             new_species.members.push(phenotype); //push this phenotype
             species.push(new_species);
         }
+
+        // finally remove any species with 0 allocated members
+        species.retain(|s| s.members.len() > 0);
     }
 
 
@@ -74,7 +89,7 @@ impl Species {
         let mut rng = rand::rng();
         let chosen = match self.members.choose(&mut rng) {
             Some(x) => x,
-            None => return, //if no members at all, just do nothing
+            None => panic!("No members of species when choosing type specimen."),
         };
         self.type_specimen = chosen.genome.clone();
     }
@@ -82,8 +97,8 @@ impl Species {
 
     /// Fill the specified number of slots with new phenotypes.
     pub fn populate(&mut self, vec: &mut Vec<Phenotype>, mut slots: usize, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
-        assert!(self.members.len() > 0); //this should be the case
-        assert!(slots > 0);
+        assert_ne!(self.members.len(), 0, "Species has at least 1 member before reproducing.");
+        assert_ne!(slots, 0, "There exist at least 1 slot for this species before reproducing.");
         let mut rng = rand::rng();
         let members = mem::take(&mut self.members); //maybe this could be done differently
         vec.push(members[0].clone()); //push the elite member

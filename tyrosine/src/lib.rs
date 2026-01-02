@@ -28,9 +28,9 @@ mod tests {
 
     #[test]
     fn population_evolve() {
-        let mut pop = Population::new(100, 7, 5);
+        let mut pop = Population::new(100, 7, 10);
         let species_pre = pop.species.clone();
-        pop.evolve(&vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        pop.evolve(&vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]);
         let species_post = pop.species.clone();
         if species_pre.len() != species_post.len() {
             return; // something has changed, so evolution has taken place
@@ -45,7 +45,7 @@ mod tests {
                 }
             }
         }
-        assert!(false);
+        assert!(false, "Population should be different after evolving.");
     }
 }
 
