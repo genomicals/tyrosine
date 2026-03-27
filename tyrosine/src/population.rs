@@ -1,6 +1,21 @@
-use std::{collections::{HashMap, HashSet}, mem};
+use std::{collections::{HashMap, HashSet}, mem, path::Path};
 use rand::seq::{IndexedRandom, SliceRandom};
+use rusqlite::Connection;
+use tempfile::{TempDir, tempdir};
 use crate::{genome::{Genome, GlobalInnovator}, phenotype::Phenotype, species::{Species, SpeciesCounter}};
+
+
+
+/// Ensure everything inside the database is ready for Tyrosine
+/// TODO fill in the schema
+fn open_database(path: &Path) -> Connection {
+    let conn = Connection::open(path).expect("failed to open database");
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS species ( ... );
+        CREATE TABLE IF NOT EXISTS snapshots ( ... );
+    ").expect("failed to initialize schema");
+    conn
+}
 
 
 
@@ -11,8 +26,8 @@ pub struct Population {
     index_cache: HashMap<usize, (usize, usize)>,
     pub species: Vec<Species>,
     pub population_size: usize,
-    //pub num_inputs: usize,
-    //pub num_outputs: usize,
+    database: Connection,
+    database_temp_dir: Option<TempDir>,
 }
 impl Population {
     /// Create a new population of genomes
@@ -36,7 +51,11 @@ impl Population {
         let chosen = mutated_population.choose(&mut rng).unwrap(); //safe unwrap
         let mut species = vec![Species::new(&chosen.genome, species_counter.next())];
         Species::sort_species(&mut species, mutated_population, &mut species_counter);
-        
+
+        // obtain a temporary folder for the database
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("snapshots.db");
+
         let mut population = Population {
             generation_number: 0,
             innovator,
@@ -46,6 +65,8 @@ impl Population {
             //num_inputs,
             //num_outputs,
             index_cache: HashMap::with_capacity(population_size),
+            database: open_database(&db_path),
+            database_temp_dir: Some(temp_dir),
         };
         population.update_cache(); //easy indexing
 
@@ -53,8 +74,25 @@ impl Population {
     }
 
 
+    /// Use an existing or new sqlite file at the given path
+    pub fn set_database(&mut self, path: impl AsRef<Path>) {
+        self.database = open_database(path.as_ref());
+        self.database_temp_dir = None;  // drop temp dir if one was active
+    }
+
+
+    /// Revert back to a temporary database
+    pub fn detach_database(&mut self) {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("snapshots.db");
+        self.database = open_database(&db_path);
+        self.database_temp_dir = Some(temp_dir);
+    }
+
+
+
     /// Update index cache to speed up phenotype indexing
-    pub fn update_cache(&mut self) {
+    fn update_cache(&mut self) {
         // ensure all species have at least one member before starting
         for s in &self.species {
             assert!(s.members.len() > 0, "All species have at least one member before caching.");
@@ -78,14 +116,6 @@ impl Population {
             .len();
         assert_eq!(species_count, self.species.len(), "Species count vs new cache.")
     }
-
-
-    ///// Feed the input and generate an output for a particular index in the population
-    //pub fn activate_index(&self, idx: usize, input: &mut Vec<f64>) -> Option<Vec<f64>> {
-    //    let pair = self.index_cache.get(&idx)?; //will fail if user provided number larger than the population size
-    //    let phenotype = &self.species[pair.0].members[pair.1];
-    //    Some(phenotype.activate(input))
-    //}
 
 
     /// Feed the input and generate an output for a particular index in the population

@@ -14,4 +14,6 @@ readme = "README.md"
 [dependencies]
 rand = "0.9.1"
 rand_distr = "0.5.1"
+rusqlite = "0.39.0"
 serde = { version = "1.0.219", features = ["derive"] }
+tempfile = "3.27.0"
