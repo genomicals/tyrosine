@@ -56,6 +56,12 @@ mod tests {
         //println!("{:?}", pop.species[0].members[0].);
         //panic!();
     }
+
+    #[test]
+    fn save_and_load_db() {
+        let mut pop = Population::new(10, 2, 10);
+        todo!()
+    }
 }
 
 

@@ -90,6 +90,12 @@ impl Population {
     }
 
 
+    /// Save current generation into the database
+    /// TODO
+    pub fn save_generation(&mut self) {
+        println!("proxy for saving a generation! still gotta implement it");
+    }
+
 
     /// Update index cache to speed up phenotype indexing
     fn update_cache(&mut self) {
@@ -189,7 +195,8 @@ impl Population {
             assert_ne!(s.members.len(), 0, "All species have at least 1 member before allotting slots.");
         }
 
-        // TODO when we implement recording a generation, do it here after all the sorting is done
+        // save generation here, after all the sorting is done
+        self.save_generation();
 
         // now we commence natural selection
         let mut reproductive_slots: Vec<_> = self.species.iter()
