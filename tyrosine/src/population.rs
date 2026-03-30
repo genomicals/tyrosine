@@ -98,6 +98,7 @@ impl Population {
 
 
     /// Update index cache to speed up phenotype indexing
+    /// NOTE this ordering is not fitness-related, but rather flattens out the individuals by species
     fn update_cache(&mut self) {
         // ensure all species have at least one member before starting
         for s in &self.species {
@@ -157,23 +158,45 @@ impl Population {
     /// NOTE the order of specimens received to calculate fitness is the same order here
     /// TODO should implement an error class, could communicate fixable errors to the user like mismatched fitness size
     pub fn evolve(&mut self, fitnesses: &Vec<f64>) {
-        assert_eq!(fitnesses.len(), self.population_size, "Fitnesses count and population size match.");
+        assert_eq!(fitnesses.len(), self.population_size, "Fitnesses count and population size don't match.");
 
+        // ((species index, individual index), fitness)
         let fitness_by_species_index = fitnesses.iter()
             .enumerate()
             .map(|(i, x)| (*self.index_cache.get(&i).unwrap(), *x))
             .collect::<Vec<((usize, usize), f64)>>();
 
-        // refactor to a list of lists
-        let mut fitness_by_species = vec![vec![]; self.species.len()];
-        for ((s_i, _), fitness) in fitness_by_species_index {
-            if s_i == fitness_by_species.len() {
-                fitness_by_species.last_mut().unwrap().push(fitness);
-            } else if s_i < fitness_by_species.len() {
-                fitness_by_species[s_i].push(fitness);
-            } else {
-                unreachable!(); //at least it should be
-            }
+        // all individuals sorted by fitness, with their coordinates available
+        let mut global_ranking = fitness_by_species_index.clone();
+        global_ranking.sort_by(|x, y| y.1.partial_cmp(&x.1).unwrap_or(std::cmp::Ordering::Less));
+
+        // re-sort the global counter so that all species have had their phenotypes sorted by fitness
+        // as this is what happens down below when we sort all phenotypes within their species
+        let mut spec_indiv_counters = vec![0; self.species.len()];
+        for i in 0..global_ranking.len() {
+            let spec = global_ranking[i].0.0;
+            global_ranking[i].0.1 = spec_indiv_counters[spec];
+            spec_indiv_counters[spec] += 1;
+        }
+
+        // refactor to a list of lists (why the hell did i write this like this?)
+        //let mut fitness_by_species = vec![vec![]; self.species.len()];
+        //for ((s_i, _), fitness) in fitness_by_species_index {
+        //    if s_i == fitness_by_species.len() {
+        //        fitness_by_species.last_mut().unwrap().push(fitness);
+        //    } else if s_i < fitness_by_species.len() {
+        //        fitness_by_species[s_i].push(fitness);
+        //    } else {
+        //        unreachable!(); //at least it should be
+        //    }
+        //}
+
+        // refactor to a list of lists (each sublist is a species, containing all the fitnesses of the members)
+        let mut fitness_by_species = self.species.iter()
+            .map(|x| vec![0.0; x.members.len()])
+            .collect::<Vec<Vec<f64>>>();
+        for ((s_i, m_i), fitness) in fitness_by_species_index {
+            fitness_by_species[s_i][m_i] = fitness;
         }
 
         let mut total_fitness = 0.0;
@@ -185,11 +208,20 @@ impl Population {
             assert_eq!(spec.members.len(), fits.len(), "Ensure number of species members and fitnesses for this species are the same.");
             let mut zipped: Vec<_> = spec.members.drain(..).zip(fits).collect();
             zipped.sort_by(|x, y| y.1.partial_cmp(&x.1).unwrap_or(std::cmp::Ordering::Less));
-            let (phens, fits): (Vec<_>, Vec<_>) = zipped.into_iter().unzip();
+            let (phens, fits): (Vec<Phenotype>, Vec<f64>) = zipped.into_iter().unzip();
             spec.members = phens;
             spec.species_fitness = Some(fits.iter().sum::<f64>() / fits.len() as f64);
             total_fitness += spec.species_fitness.unwrap(); //safe unwrap
+
         }
+
+        /*
+        TODO
+        at this point we have sorted all phenotypes but only within their species
+        and we have their fitnesses sorted as well, but we don't do anything with
+        that. Perhaps it would be useful to return the overall ranking of all phenotypes
+        across species, tupled with their individual fitness, just for database purposes
+        */
 
         for s in &self.species {
             assert_ne!(s.members.len(), 0, "All species have at least 1 member before allotting slots.");
