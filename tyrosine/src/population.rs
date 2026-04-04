@@ -7,7 +7,7 @@ use crate::{genome::{Genome, GlobalInnovator}, phenotype::Phenotype, species::{S
 
 
 /// Ensure everything inside the database is ready for Tyrosine
-/// TODO fill in the schema
+// TODO: fill in the schema
 fn open_database(path: &Path) -> Connection {
     let conn = Connection::open(path).expect("failed to open database");
     conn.execute_batch("
@@ -91,14 +91,14 @@ impl Population {
 
 
     /// Save current generation into the database
-    /// TODO
-    pub fn save_generation(&mut self) {
+    // TODO:
+    pub fn save_generation(&mut self, global_ranking: &Vec<((usize, usize), f64)>) {
         println!("proxy for saving a generation! still gotta implement it");
     }
 
 
     /// Update index cache to speed up phenotype indexing
-    /// NOTE this ordering is not fitness-related, but rather flattens out the individuals by species
+    // NOTE: this ordering is not fitness-related, but rather flattens out the individuals by species
     fn update_cache(&mut self) {
         // ensure all species have at least one member before starting
         for s in &self.species {
@@ -136,10 +136,13 @@ impl Population {
 
     /// Distribute a total among a certain amount of buckets
     pub fn distribute_evenly(total: usize, buckets: usize) -> Vec<usize> {
+        if buckets == 0 {
+            return vec![];
+        }
+
         let mut result = vec![total / buckets; buckets];
         let remainder = total % buckets;
 
-        //use rand::seq::SliceRandom;
         let mut rng = rand::rng();
 
         // Randomly pick buckets to get +1
@@ -155,8 +158,8 @@ impl Population {
 
 
     /// Evolve the population by one generation with provided fitness
-    /// NOTE the order of specimens received to calculate fitness is the same order here
-    /// TODO should implement an error class, could communicate fixable errors to the user like mismatched fitness size
+    // NOTE: the order of specimens received to calculate fitness is the same order here
+    // TODO: should implement an error class, could communicate fixable errors to the user like mismatched fitness size
     pub fn evolve(&mut self, fitnesses: &Vec<f64>) {
         assert_eq!(fitnesses.len(), self.population_size, "Fitnesses count and population size don't match.");
 
@@ -178,18 +181,6 @@ impl Population {
             global_ranking[i].0.1 = spec_indiv_counters[spec];
             spec_indiv_counters[spec] += 1;
         }
-
-        // refactor to a list of lists (why the hell did i write this like this?)
-        //let mut fitness_by_species = vec![vec![]; self.species.len()];
-        //for ((s_i, _), fitness) in fitness_by_species_index {
-        //    if s_i == fitness_by_species.len() {
-        //        fitness_by_species.last_mut().unwrap().push(fitness);
-        //    } else if s_i < fitness_by_species.len() {
-        //        fitness_by_species[s_i].push(fitness);
-        //    } else {
-        //        unreachable!(); //at least it should be
-        //    }
-        //}
 
         // refactor to a list of lists (each sublist is a species, containing all the fitnesses of the members)
         let mut fitness_by_species = self.species.iter()
@@ -215,20 +206,12 @@ impl Population {
 
         }
 
-        /*
-        TODO
-        at this point we have sorted all phenotypes but only within their species
-        and we have their fitnesses sorted as well, but we don't do anything with
-        that. Perhaps it would be useful to return the overall ranking of all phenotypes
-        across species, tupled with their individual fitness, just for database purposes
-        */
-
         for s in &self.species {
             assert_ne!(s.members.len(), 0, "All species have at least 1 member before allotting slots.");
         }
 
         // save generation here, after all the sorting is done
-        self.save_generation();
+        self.save_generation(&global_ranking); // TODO:
 
         // now we commence natural selection
         let mut reproductive_slots: Vec<_> = self.species.iter()
@@ -237,7 +220,8 @@ impl Population {
 
         // see how many slots we have total, and adjust to ensure we have self.population_size
         let total_slots: usize = reproductive_slots.iter().sum();
-        let remainder = self.population_size - total_slots; //not enough slots, we need this many more
+        let remainder = self.population_size - total_slots; //if not enough slots, we need this many more
+        // just a potential note here, total_slots could potentially be greater than population_size, maybe
 
         if remainder > 0 {
             let extra_slots = Population::distribute_evenly(remainder, self.species.len());
@@ -261,7 +245,7 @@ impl Population {
             assert_ne!(spec.members.len(), 0, "All species have at least 1 member before repopulating.");
             spec.species_fitness = None; //reset this just because
             spec.members.truncate((spec.members.len() / 2).max(1)); //remove half but keep at least 1 for populating
-            spec.choose_type_specimen(); //TODO need to ensure every species has members
+            spec.choose_type_specimen();
 
             // partially fill new_population with all children of this species, depending on allotted slots
             spec.populate(&mut new_population, slots, &mut self.innovator, &mut new_innovations);

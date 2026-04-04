@@ -86,6 +86,7 @@ impl Species {
 
     /// Out of the current members, choose a type specimen.
     pub fn choose_type_specimen(&mut self) {
+        assert_ne!(self.members.len(), 0, "All species have at least 1 member before choosing type specimen.");
         let mut rng = rand::rng();
         let chosen = match self.members.choose(&mut rng) {
             Some(x) => x,
@@ -96,20 +97,20 @@ impl Species {
 
 
     /// Fill the specified number of slots with new phenotypes.
-    pub fn populate(&mut self, vec: &mut Vec<Phenotype>, mut slots: usize, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
+    pub fn populate(&mut self, new_population: &mut Vec<Phenotype>, mut slots: usize, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         assert_ne!(self.members.len(), 0, "Species has at least 1 member before reproducing.");
         assert_ne!(slots, 0, "There exist at least 1 slot for this species before reproducing.");
         let mut rng = rand::rng();
         let members = mem::take(&mut self.members); //maybe this could be done differently
-        vec.push(members[0].clone()); //push the elite member
+        new_population.push(members[0].clone()); //push the elite member
         slots -= 1;
 
         // push newly born children
         if members.len() == 1 { //asexual reproduction
+            let this_genome = &members.first().unwrap().genome;
             while slots > 0 {
-                let this_genome = &members.first().unwrap().genome;
                 let phenotype = Phenotype::from_mutation(this_genome, innovator, innovations);
-                vec.push(phenotype);
+                new_population.push(phenotype);
                 slots -= 1;
             }
         } else { //sexual reproduction
@@ -117,16 +118,16 @@ impl Species {
                 let indices = sample(&mut rng, members.len(), 2);
                 let fit_parent;
                 let unfit_parent;
-                if indices.index(0) > indices.index(1) { //first parent fitter
+                if indices.index(0) < indices.index(1) { //first parent is more fit (index is less)
                     fit_parent = members.get(indices.index(0)).unwrap();
                     unfit_parent = members.get(indices.index(1)).unwrap();
-                } else { //second parent fitter
+                } else { //second parent is more fit
                     fit_parent = members.get(indices.index(1)).unwrap();
                     unfit_parent = members.get(indices.index(0)).unwrap();
                 }
                 let child_genome = Genome::crossover(&fit_parent.genome, &unfit_parent.genome);
                 let child = Phenotype::from_mutation(&child_genome, innovator, innovations);
-                vec.push(child);
+                new_population.push(child);
                 slots -= 1;
             }
         }

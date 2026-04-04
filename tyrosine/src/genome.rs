@@ -55,13 +55,13 @@ pub struct Genome {
     pub node_genes: Vec<NodeGene>,
     pub connection_genes: Vec<ConnectionGene>,
 }
-const CONNECTION_MUTATION_RATE: f64 = 0.15;
-const NODE_MUTATION_RATE: f64 = 0.03; //should be the least common mutation type
-const WEIGHT_MUTATION_RATE: f64 = 0.8;
-const PERTUBATION_CHANCE: f64 = 0.9; //(1-pertubation_chance) is the chance of total replacement vs just a nudge
+const CONNECTION_MUTATION_RATE: f64 = 0.15; //chance of new connection
+const NODE_MUTATION_RATE: f64 = 0.03; //chance of new node
+const WEIGHT_MUTATION_RATE: f64 = 0.9; //chance of weight mutation
+const PERTUBATION_CHANCE: f64 = 0.96; //(1-pertubation_chance) is the chance of total replacement vs just a nudge
 const PERTUBATION_STD: f64 = 0.1;
-const REPLACEMENT_RANGE: f64 = 5.0;
-const TOGGLE_MUTATION_RATE: f64 = 0.01;
+const REPLACEMENT_RANGE: f64 = 5.0; //radius of range for new replacement weights
+const TOGGLE_MUTATION_RATE: f64 = 0.01; //chance of connection getting toggled
 impl Genome {
     /// Create a new genome with the specified number of inputs and outputs
     pub fn new(num_inputs: usize, num_outputs: usize) -> Self {
@@ -81,32 +81,36 @@ impl Genome {
     /// Generate a child from two parent genomes, no mutations applied
     /// The first parent will be favored over the second
     pub fn crossover(fit_parent: &Genome, unfit_parent: &Genome) -> Genome {
-        let mut child_connections: Vec<ConnectionGene> = Vec::new();        
+        let mut child_connections: Vec<ConnectionGene> = Vec::new();
 
-        let mut fitter_map = HashMap::new();
+        // map the more fit parent's connections to their innovation numbers
+        let mut fit_innov_map = HashMap::new();
         for conn in &fit_parent.connection_genes {
-            fitter_map.insert(conn.innov, conn);
+            fit_innov_map.insert(conn.innov, conn);
         }
 
-        let mut unfit_map = HashMap::new();
+        // do the same for the less fit parent
+        let mut unfit_innov_map = HashMap::new();
         for conn in &unfit_parent.connection_genes {
-            unfit_map.insert(conn.innov, conn);
+            unfit_innov_map.insert(conn.innov, conn);
         }
 
         // iterate over both parents, grabbing all innov numbers and saving them to compare
-        let all_innovs: BTreeSet<usize> = fitter_map.keys().chain(unfit_map.keys()).cloned().collect();
+        // TODO: why a btree set instead of a hashmap? look into this
+        let all_innovs: BTreeSet<usize> = fit_innov_map.keys().chain(unfit_innov_map.keys()).cloned().collect();
         for innov in all_innovs { //iterate through all combined innov numbers
-            match (fitter_map.get(&innov), unfit_map.get(&innov)) {
+            match (fit_innov_map.get(&innov), unfit_innov_map.get(&innov)) {
                 (Some(&a), Some(&b)) => {
                     // matching gene: pick randomly
                     child_connections.push(if rand::random() { a.clone() } else { b.clone() });
                 }
                 (Some(&a), None) => {
-                    // excess: take from fitter
+                    // gene present only in more fit parent
                     child_connections.push(a.clone());
                 }
                 (None, Some(_b)) => {
-                    // gene only in less-fit: ignore
+                    // gene only in less fit parent, ignore
+                    // TODO: is this what we want?
                 }
                 (None, None) => unreachable!(),
             }
@@ -122,18 +126,18 @@ impl Genome {
 
 
     /// Master mutate function, calls the other mutate functions
-    /// NOTE: no guarantee that the genome produced is valid
+    // NOTE: no guarantee that the genome produced is valid
     pub fn mutate(&mut self, innovator: &mut GlobalInnovator, innovations: &mut HashMap<(usize, usize), usize>) {
         let mut rng = rand::rng();
 
         self.mutate_weights_and_toggle();
 
-        if rng.random::<f64>() < CONNECTION_MUTATION_RATE {
-            self.add_connection(innovator, innovations);
-        }
-
         if rng.random::<f64>() < NODE_MUTATION_RATE {
             self.add_node(innovator, innovations);
+        }
+
+        if rng.random::<f64>() < CONNECTION_MUTATION_RATE {
+            self.add_connection(innovator, innovations);
         }
     }
 
@@ -178,9 +182,11 @@ impl Genome {
             .collect::<Vec<&mut ConnectionGene>>();
 
         // disable the existing node
+        // TODO: um, that's not what's happening here
         let chosen = collected.choose_mut(&mut rng).unwrap(); //safe unwrap
 
         // create a new node
+        // TODO: is this really the best way to choose a new node id?
         let new_id = self.node_genes.last().unwrap().id + 1;
         self.node_genes.push(NodeGene { id: new_id});
 
@@ -217,14 +223,14 @@ impl Genome {
         let connection_1 = ConnectionGene {
             in_node: new_id,
             out_node: chosen.out_node,
-            weight: 1.0, //ensure the other connection still functions like the old connection
+            weight: 1.0, //preserve the overall functionality of the old connection
             enabled: true,
             innov: innov1,
         };
 
         // disable and modify old connection
         chosen.enabled = false;
-        chosen.weight = 1.0;
+        chosen.weight = 1.0; //TODO: why? I guess to reset its behavior, as the new connections took on its old behavior
 
         // push to genome
         self.connection_genes.push(connection_0);
@@ -232,7 +238,7 @@ impl Genome {
 
         // sort the connection genes by innov number and the nodes by id
         self.connection_genes.sort_by_key(|c| c.innov);
-        self.node_genes.sort_by_key(|n| n.id);
+        self.node_genes.sort_by_key(|n| n.id); // TODO: again, not necessary here
     }
 
 
@@ -253,11 +259,12 @@ impl Genome {
             ).collect();
 
         // find possible new connections
+        // TODO: nah this is ugly as shit, this is going to get exponentially worse
         let mut candidates = Vec::new();
         for (i, a) in self.node_genes.iter().enumerate() {
             for b in &self.node_genes[i + 1..] {
                 let pair = if a.id < b.id { (a.id, b.id) } else { (b.id, a.id) };
-                
+
                 // ensure the connect doesn't exist
                 if connected.contains(&pair) {
                     continue;
@@ -314,6 +321,7 @@ impl Genome {
         });
 
         // sort the connection genes by innov number
+        // TODO: no need to do this, the new innov is going to be the highest number ever seen anyway
         self.connection_genes.sort_by_key(|c| c.innov);
     }
 }

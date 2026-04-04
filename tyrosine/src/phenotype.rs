@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use serde::{Deserialize, Serialize};
 use crate::genome::{ConnectionGene, Genome, GlobalInnovator};
 
@@ -29,15 +29,16 @@ impl Phenotype {
 
     /// Generates a Phenotype from Genome and checks if it's a valid genome
     pub fn from_genome(genome: Genome) -> Option<Phenotype> {
-        let mut graph: HashMap<usize, Vec<usize>> = HashMap::new(); //maps dependencies to their output
-        let mut in_degree: HashMap<usize, usize> = HashMap::new(); //incoming degree of each node
+        let mut graph: HashMap<usize, Vec<usize>> = HashMap::new(); //maps dependencies to their output (in, out)
+        let mut in_degree: HashMap<usize, usize> = HashMap::new(); //incoming degree of each node (node, degree)
 
-        // initialize, necessary so that all nodes, reachable or not, are captured, including inputs
+        // initialize, necessary so that we don't lose nodes
+        //   that have no connections to them, inputs being a common example
         for node in &genome.node_genes {
             in_degree.insert(node.id, 0);
         }
 
-        // population both hashmaps
+        // populate both hashmaps
         for conn in genome.connection_genes.iter().filter(|c| c.enabled) {
             graph.entry(conn.in_node).or_default().push(conn.out_node);
             *in_degree.entry(conn.out_node).or_insert(0) += 1;
@@ -51,8 +52,14 @@ impl Phenotype {
 
         // sort all the nodes
         let mut sorted = Vec::new();
+        let mut already_processed = HashSet::new(); //easier to lookup
         while let Some(node) = frontier.pop_front() {
             sorted.push(node); //once a node is being processed, push it to the sorted vector
+            if already_processed.contains(&node) { //we've already processed this node before, is a loop
+                return None;
+            } else { //haven't seen before, add to the set
+                already_processed.insert(node);
+            }
             if let Some(outputs) = graph.get(&node) { //if the node has children, decrement their degree
                 for &output in outputs {
                     let deg = in_degree.get_mut(&output).unwrap();
@@ -60,12 +67,14 @@ impl Phenotype {
                     if *deg == 0 { //once a node has 0 dependencies left to be processed, push it to the frontier
                         frontier.push_back(output);
                     }
+                    // NOTE: theoretically we should never hit a negative degree, and if we do then
+                    // we crash
                 }
             }
         }
 
-        // detect cycles, invalid network if it's recurrent
-        if sorted.len() != genome.node_genes.len() {
+        // another case to detect cycles, invalid network if it's recurrent
+        if sorted.len() != already_processed.len() || sorted.len() != genome.node_genes.len() {
             return None;
         }
 
@@ -81,20 +90,22 @@ impl Phenotype {
         // one of the network inputs is the bias, ensure the number of inputs lines up
         assert_eq!(inputs.len() + 1, self.genome.num_inputs, "Number of inputs ({}) didn't match expected amount ({}).", inputs.len(), self.genome.num_inputs - 1);
 
-        // note, entries only exist once the value is calculated, otherwise it will be missing here
+        // NOTE: entries only exist once the value is calculated, otherwise it will be missing here
         let mut node_values: HashMap<usize, f64> = HashMap::new();
 
         // initialize input values in the nodes_values map
         node_values.insert(0, 1.0); //bias node
-        for i in 0..self.genome.num_inputs - 1 {
-            node_values.insert(i+1, inputs[i]); //offset the key to account for bias node
+        for i in 1..self.genome.num_inputs {
+            node_values.insert(i, inputs[i-1]); //offset the key to account for bias node
         }
+
+        // NOTE: some of this can totally be done once during the construction of the Phenotype
 
         // incoming connections references for each node id
         let incoming = self.genome.connection_genes.iter()
             .filter(|conn| conn.enabled)
             .fold(HashMap::<usize, Vec<&ConnectionGene>>::new(), |mut acc, conn| {
-                acc.entry(conn.out_node).or_default().push(conn);
+                acc.entry(conn.out_node).or_default().push(conn); //create vector if doesn't exist, otherwise push
                 acc
             });
 
@@ -113,7 +124,7 @@ impl Phenotype {
                 .map(|conn| node_values.get(&conn.in_node).unwrap_or(&0.0) * conn.weight)
                 .sum();
 
-            node_values.insert(node_id, sum.tanh());
+            node_values.insert(node_id, sum.tanh()); //apply activation function
         }
 
         let output_start = self.genome.num_inputs; //outputs start right after the inputs
